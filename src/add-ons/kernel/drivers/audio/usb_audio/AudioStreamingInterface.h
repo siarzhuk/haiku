@@ -40,11 +40,12 @@ public:
 							~ASEndpointDescriptor();
 
 // protected:
-		uint8				fAttributes;
+		uint8				fCSAttributes;
 		uint8				fLockDelayUnits;
 		uint16				fLockDelay;
 		uint16				fMaxPacketSize;
 		uint8				fEndpointAddress;
+		uint8				fEndpointAttributes;
 };
 
 

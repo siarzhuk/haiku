@@ -572,10 +572,11 @@ Device::_MultiBufferExchange(multi_buffer_info* Info)
 		}
 	}
 
-	TRACE_ALWAYS("Exchange!\n");
+//	TRACE_ALWAYS("Exchange!\n");
+/*
 	snooze(1000000);
 	return B_OK;
-
+*/
 	status_t status = B_ERROR;
 	bool anyBufferProcessed = false;
 	for (int i = 0; i < fStreams.Count() && !anyBufferProcessed; i++) {

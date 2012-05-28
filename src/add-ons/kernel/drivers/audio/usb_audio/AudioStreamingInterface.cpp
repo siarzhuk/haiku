@@ -44,28 +44,31 @@ ASInterfaceDescriptor::~ASInterfaceDescriptor()
 ASEndpointDescriptor::ASEndpointDescriptor(usb_endpoint_descriptor* Endpoint,
 					usb_as_cs_endpoint_descriptor* Descriptor)
 			:
-			fAttributes(0),
+			fCSAttributes(0),
 			fLockDelayUnits(0),
 			fLockDelay(0),
 			fMaxPacketSize(0),
-			fEndpointAddress(0)
+			fEndpointAddress(0),
+			fEndpointAttributes(0)
 {
 //	usb_audiocontrol_header_descriptor *Header
 //		= (usb_audiocontrol_header_descriptor *)Interface->generic[i];
 
-	fAttributes = Descriptor->attributes;
+	fCSAttributes = Descriptor->attributes;
 	fLockDelayUnits = Descriptor->lock_delay_units;
 	fLockDelay = Descriptor->lock_delay;
 
 //	usb_endpoint_descriptor* endpoint = Interface->endpoint[0]->descr;
+	fEndpointAttributes = Endpoint->attributes;
 	fEndpointAddress = Endpoint->endpoint_address;
 	fMaxPacketSize = Endpoint->max_packet_size;
 
-	TRACE("fAttributes:%d\n", fAttributes);
+	TRACE("fCSAttributes:%d\n", fCSAttributes);
 	TRACE("fLockDelayUnits:%d\n", fLockDelayUnits);
 	TRACE("fLockDelay:%d\n", fLockDelay);
 	TRACE("fMaxPacketSize:%d\n", fMaxPacketSize);
 	TRACE("fEndpointAddress:%#02x\n", fEndpointAddress);
+	TRACE("fEndpointAttributes:%d\n", fEndpointAttributes);
 }
 
 

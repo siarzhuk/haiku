@@ -80,6 +80,12 @@ Stream::Init()
 		TypeIFormatDescriptor* format
 				= static_cast<TypeIFormatDescriptor*>(fAlternates[i]->Format());
 
+		if (format->fNumChannels > 2) {
+			TRACE("Ignore alternate %d - channel count %d "
+					"is not supported.\n", i, format->fNumChannels);
+			continue;
+		}
+
 		if (fAlternates[i]->Interface()->fFormatTag == UAF_PCM) {
 			switch(format->fBitResolution) {
 				default:
@@ -217,11 +223,11 @@ Stream::Start()
 	status_t result = B_BUSY;
 	if (!fIsRunning) {
 		if (!fIsInput) {
-			// for (size_t i = 0; i < kSamplesBufferCount; i++)
-			//	result = _QueueNextTransfer(i);
+			for (size_t i = 0; i < kSamplesBufferCount; i++)
+				result = _QueueNextTransfer(i);
 			// TODO
-			//	result = _QueueNextTransfer(0);
-			result = B_OK;
+		//		result = _QueueNextTransfer(0);
+			//result = B_OK;
 		} else
 			result = B_OK;
 		fIsRunning = result == B_OK;
@@ -266,7 +272,7 @@ Stream::_QueueNextTransfer(size_t queuedBuffer)
 			NULL/*&fStartingFrame*/, USB_ISO_ASAP,
 			Stream::_TransferCallback, this);
 
-	return B_OK;
+//	return B_OK;
 }
 
 
@@ -279,19 +285,18 @@ Stream::_TransferCallback(void *cookie, int32 status, void *data,
 	stream->fCurrentBuffer++;
 	if (stream->fCurrentBuffer >= kSamplesBufferCount) {
 		stream->fCurrentBuffer = 0;
-	}
+	} // TODO use modulo operation? ;)
+
+//	stream->_DumpDescriptors();
 
 	stream->_DumpDescriptors();
-
-	stream->_DumpDescriptors();
-
-	/*
+	
 	status_t result = stream->_QueueNextTransfer(stream->fCurrentBuffer);
 
 	if (atomic_add(&stream->fProcessedBuffers, 1) > (int32)kSamplesBufferCount) {
 		TRACE_ALWAYS("Processed buffers overflow:%d\n", stream->fProcessedBuffers);
 	}
-*/
+
 	release_sem_etc(stream->fDevice->fBuffersReadySem, 1, B_DO_NOT_RESCHEDULE);
 
 	// TRACE_ALWAYS("st:%#010x, len:%d -> %#010x\n", status, actualLength, result);
