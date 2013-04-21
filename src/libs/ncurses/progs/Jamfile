@@ -18,6 +18,7 @@ SubDirSysHdrs [ FDirName $(SUBDIR) $(DOTDOT) include ] ;
 
 BinCommand <ncurses>tput :
 	tput.c
+	transform.c
 	: libncurses.a : ;
 
 BinCommand <ncurses>infocmp :
@@ -26,6 +27,7 @@ BinCommand <ncurses>infocmp :
 	: libncurses.a : ;
 
 BinCommand <ncurses>tset :
+	transform.c
 	tset.c
 	: libncurses.a : ;
 
@@ -37,8 +39,13 @@ BinCommand <ncurses>toe :
 	toe.c
 	: libncurses.a : ;
 
+BinCommand <ncurses>tabs :
+	tabs.c
+	: libncurses.a : ;
+
 BinCommand <ncurses>tic :
 	dump_entry.c
 	tic.c
+	transform.c
 	: libncurses.a : ;
 

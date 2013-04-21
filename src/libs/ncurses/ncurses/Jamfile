@@ -30,6 +30,7 @@ StaticLibrary libncurses.a :
 	key_defined.c
 	keybound.c
 	keyok.c
+	legacy_coding.c
 	lib_addch.c
 	lib_addstr.c
 	lib_beep.c
@@ -107,6 +108,7 @@ StaticLibrary libncurses.a :
 	tries.c
 	version.c
 	vsscanf.c
+	use_window.c
 	wresize.c
 
 	# tinfo
@@ -120,9 +122,12 @@ StaticLibrary libncurses.a :
 	comp_hash.c
 	comp_parse.c
 	comp_scan.c
+	db_iterator.c
 	doalloc.c
+	entries.c
 	free_ttype.c
 	getenv_num.c
+	hashed_db.c
 	home_terminfo.c
 	init_keytry.c
 	lib_acs.c
@@ -151,6 +156,7 @@ StaticLibrary libncurses.a :
 	setbuf.c
 	strings.c
 	trim_sgr0.c
+	use_screen.c
 	write_entry.c
 
 	# trace
