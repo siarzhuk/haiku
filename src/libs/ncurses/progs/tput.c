@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2004,2005 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -38,14 +38,16 @@
  * Ross Ridge's mytinfo package.
  */
 
+#define USE_LIBTINFO
 #include <progs.priv.h>
 
 #if !PURE_TERMINFO
+#include <dump_entry.h>
 #include <termsort.c>
 #endif
 #include <transform.h>
 
-MODULE_ID("$Id: tput.c,v 1.35 2005/04/03 14:25:32 tom Exp $")
+MODULE_ID("$Id: tput.c,v 1.46 2010/01/09 16:53:24 tom Exp $")
 
 #define PUTS(s)		fputs(s, stdout)
 #define PUTCHAR(c)	putchar(c)
@@ -84,8 +86,8 @@ usage(void)
 static void
 check_aliases(const char *name)
 {
-    is_init = (strcmp(name, PROG_INIT) == 0);
-    is_reset = (strcmp(name, PROG_RESET) == 0);
+    is_init = same_program(name, PROG_INIT);
+    is_reset = same_program(name, PROG_RESET);
 }
 
 /*
@@ -151,6 +153,9 @@ tput(int argc, char *argv[])
     int i, j, c;
     int status;
     FILE *f;
+#if !PURE_TERMINFO
+    bool termcap = FALSE;
+#endif
 
     if ((name = argv[0]) == 0)
 	name = "";
@@ -177,14 +182,14 @@ tput(int argc, char *argv[])
 
 #ifdef set_lr_margin
 	if (set_lr_margin != 0) {
-	    PUTS(tparm(set_lr_margin, 0, columns - 1));
+	    PUTS(TPARM_2(set_lr_margin, 0, columns - 1));
 	} else
 #endif
 #ifdef set_left_margin_parm
 	    if (set_left_margin_parm != 0
 		&& set_right_margin_parm != 0) {
-	    PUTS(tparm(set_left_margin_parm, 0));
-	    PUTS(tparm(set_right_margin_parm, columns - 1));
+	    PUTS(TPARM_1(set_left_margin_parm, 0));
+	    PUTS(TPARM_1(set_right_margin_parm, columns - 1));
 	} else
 #endif
 	    if (clear_margins != 0
@@ -198,7 +203,7 @@ tput(int argc, char *argv[])
 	    }
 	    PUTS(set_left_margin);
 	    if (parm_right_cursor) {
-		PUTS(tparm(parm_right_cursor, columns - 1));
+		PUTS(TPARM_1(parm_right_cursor, columns - 1));
 	    } else {
 		for (i = 0; i < columns - 1; i++) {
 		    PUTCHAR(' ');
@@ -217,7 +222,7 @@ tput(int argc, char *argv[])
 	    if (clear_all_tabs != 0 && set_tab != 0) {
 		for (i = 0; i < columns - 1; i += 8) {
 		    if (parm_right_cursor) {
-			PUTS(tparm(parm_right_cursor, 8));
+			PUTS(TPARM_1(parm_right_cursor, 8));
 		    } else {
 			for (j = 0; j < 8; j++)
 			    PUTCHAR(' ');
@@ -251,8 +256,8 @@ tput(int argc, char *argv[])
 
 	if (is_reset && reset_3string != 0) {
 	    PUTS(reset_3string);
-	} else if (init_2string != 0) {
-	    PUTS(init_2string);
+	} else if (init_3string != 0) {
+	    PUTS(init_3string);
 	}
 	FLUSH;
 	return 0;
@@ -263,35 +268,40 @@ tput(int argc, char *argv[])
 	return 0;
     }
 #if !PURE_TERMINFO
-    {
-	const struct name_table_entry *np;
-
-	if ((np = _nc_find_entry(name, _nc_get_hash_table(1))) != 0)
-	    switch (np->nte_type) {
-	    case BOOLEAN:
-		if (bool_from_termcap[np->nte_index])
-		    name = boolnames[np->nte_index];
-		break;
-
-	    case NUMBER:
-		if (num_from_termcap[np->nte_index])
-		    name = numnames[np->nte_index];
-		break;
-
-	    case STRING:
-		if (str_from_termcap[np->nte_index])
-		    name = strnames[np->nte_index];
-		break;
-	    }
-    }
+  retry:
 #endif
-
     if ((status = tigetflag(name)) != -1) {
 	return exit_code(BOOLEAN, status);
     } else if ((status = tigetnum(name)) != CANCELLED_NUMERIC) {
 	(void) printf("%d\n", status);
 	return exit_code(NUMBER, 0);
     } else if ((s = tigetstr(name)) == CANCELLED_STRING) {
+#if !PURE_TERMINFO
+	if (!termcap) {
+	    const struct name_table_entry *np;
+
+	    termcap = TRUE;
+	    if ((np = _nc_find_entry(name, _nc_get_hash_table(termcap))) != 0) {
+		switch (np->nte_type) {
+		case BOOLEAN:
+		    if (bool_from_termcap[np->nte_index])
+			name = boolnames[np->nte_index];
+		    break;
+
+		case NUMBER:
+		    if (num_from_termcap[np->nte_index])
+			name = numnames[np->nte_index];
+		    break;
+
+		case STRING:
+		    if (str_from_termcap[np->nte_index])
+			name = strnames[np->nte_index];
+		    break;
+		}
+		goto retry;
+	    }
+	}
+#endif
 	quit(4, "unknown terminfo capability '%s'", name);
     } else if (s != ABSENT_STRING) {
 	if (argc > 1) {
@@ -320,24 +330,25 @@ tput(int argc, char *argv[])
 
 	    switch (tparm_type(name)) {
 	    case Num_Str:
-		s = tparm(s, numbers[1], strings[2]);
+		s = TPARM_2(s, numbers[1], strings[2]);
 		break;
 	    case Num_Str_Str:
-		s = tparm(s, numbers[1], strings[2], strings[3]);
+		s = TPARM_3(s, numbers[1], strings[2], strings[3]);
 		break;
+	    case Numbers:
 	    default:
 		(void) _nc_tparm_analyze(s, p_is_s, &popcount);
 #define myParam(n) (p_is_s[n - 1] != 0 ? ((long) strings[n]) : numbers[n])
-		s = tparm(s,
-			  myParam(1),
-			  myParam(2),
-			  myParam(3),
-			  myParam(4),
-			  myParam(5),
-			  myParam(6),
-			  myParam(7),
-			  myParam(8),
-			  myParam(9));
+		s = TPARM_9(s,
+			    myParam(1),
+			    myParam(2),
+			    myParam(3),
+			    myParam(4),
+			    myParam(5),
+			    myParam(6),
+			    myParam(7),
+			    myParam(8),
+			    myParam(9));
 		break;
 	    }
 	}
@@ -363,7 +374,7 @@ main(int argc, char **argv)
 
     term = getenv("TERM");
 
-    while ((c = getopt(argc, argv, "ST:V")) != EOF) {
+    while ((c = getopt(argc, argv, "ST:V")) != -1) {
 	switch (c) {
 	case 'S':
 	    cmdline = FALSE;
@@ -374,7 +385,7 @@ main(int argc, char **argv)
 	    break;
 	case 'V':
 	    puts(curses_version());
-	    return EXIT_SUCCESS;
+	    ExitProgram(EXIT_SUCCESS);
 	default:
 	    usage();
 	    /* NOTREACHED */
@@ -404,7 +415,7 @@ main(int argc, char **argv)
     if (cmdline) {
 	if ((argc <= 0) && !is_reset && !is_init)
 	    usage();
-	return tput(argc, argv);
+	ExitProgram(tput(argc, argv));
     }
 
     while (fgets(buf, sizeof(buf), stdin) != 0) {
@@ -432,5 +443,5 @@ main(int argc, char **argv)
 	}
     }
 
-    return result;
+    ExitProgram(result);
 }

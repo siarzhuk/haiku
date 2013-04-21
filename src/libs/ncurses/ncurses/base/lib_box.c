@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2001,2002 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,6 +29,8 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
+ *     and: Sven Verdoolaege                        2001                    *
  ****************************************************************************/
 
 /*
@@ -40,17 +42,18 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_box.c,v 1.21 2002/09/15 01:04:27 tom Exp $")
+MODULE_ID("$Id: lib_box.c,v 1.24 2010/04/24 23:51:57 tom Exp $")
 
 #if USE_WIDEC_SUPPORT
-static inline chtype
+static NCURSES_INLINE chtype
 _my_render(WINDOW *win, chtype ch)
 {
     NCURSES_CH_T wch;
     SetChar2(wch, ch);
     wch = _nc_render(win, wch);
-    return CharOf(wch) | AttrOf(wch);
+    return ((attr_t) CharOf(wch)) | AttrOf(wch);
 }
+
 #define RENDER_WITH_DEFAULT(ch,def) w ## ch = _my_render(win, (ch == 0) ? def : ch)
 #else
 #define RENDER_WITH_DEFAULT(ch,def) w ## ch = _nc_render(win, (ch == 0) ? def : ch)
@@ -68,7 +71,7 @@ wborder(WINDOW *win,
     chtype wls, wrs, wts, wbs, wtl, wtr, wbl, wbr;
 
     T((T_CALLED("wborder(%p,%s,%s,%s,%s,%s,%s,%s,%s)"),
-       win,
+       (void *) win,
        _tracechtype2(1, ls),
        _tracechtype2(2, rs),
        _tracechtype2(3, ts),

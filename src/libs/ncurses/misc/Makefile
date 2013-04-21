@@ -1,6 +1,6 @@
-# $Id: Makefile.in,v 1.36 2004/07/11 16:00:13 tom Exp $
+# $Id: Makefile.in,v 1.56 2011/02/21 01:09:31 tom Exp $
 ##############################################################################
-# Copyright (c) 1998,2000,2001,2002 Free Software Foundation, Inc.           #
+# Copyright (c) 1998-2010,2011 Free Software Foundation, Inc.                #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
 # copy of this software and associated documentation files (the "Software"), #
@@ -27,7 +27,7 @@
 # authorization.                                                             #
 ##############################################################################
 #
-# Author: Thomas E. Dickey <dickey@clark.net> 1996,1997
+# Author: Thomas E. Dickey 1996-on
 #
 # Makefile for ncurses miscellany directory
 #
@@ -43,6 +43,7 @@
 .SUFFIXES :
 
 SHELL		= /bin/sh
+
 THIS		= Makefile
 
 CF_MFLAGS 	= 
@@ -51,34 +52,36 @@ CF_MFLAGS 	=
 DESTDIR		= 
 top_srcdir	= ..
 srcdir		= .
-prefix		= /usr/local
+prefix		= /boot/common
 exec_prefix	= ${prefix}
 bindir		= ${exec_prefix}/bin
 libdir		= ${exec_prefix}/lib
-datadir		= ${prefix}/share
-
-CC		= gcc
-HOSTCC		= $(CC)
+datadir		= /boot/common/data
 
 tabsetdir	= $(datadir)/tabset
-ticdir		= /usr/local/share/terminfo
+ticdir		= /boot/common/data/terminfo
+ticfile		= $(ticdir).db
 source		= ${top_srcdir}/misc/terminfo.src
 
 INSTALL		= /bin/install -c
+INSTALL_PROGRAM	= ${INSTALL}
+INSTALL_SCRIPT	= ${INSTALL}
 INSTALL_DATA	= ${INSTALL} -m 644
+
+PKG_CONFIG_LIBDIR = /boot/common/lib/pkgconfig
 
 ################################################################################
 all :	terminfo.tmp
 
 depend :
 
-sources :
+sources :: terminfo.tmp 
 
-install : install.data
+install : install.data install.libs
 
 install.data :	terminfo.tmp \
 		$(DESTDIR)$(libdir) \
-		$(DESTDIR)$(ticdir) \
+		$(DESTDIR)$(datadir) \
 		$(DESTDIR)$(tabsetdir)
 	DESTDIR=${DESTDIR} \
 	prefix=${prefix} \
@@ -89,15 +92,27 @@ install.data :	terminfo.tmp \
 	datadir=${datadir} \
 	ticdir=${ticdir} \
 	source=terminfo.tmp \
-	THIS_CC="$(CC)" \
-	THAT_CC="$(HOSTCC)" \
-	sh ./run_tic.sh
+	cross_compiling=no \
+	$(SHELL) ./run_tic.sh
 	@cd $(srcdir)/tabset && \
-		sh -c 'for i in * ; do \
+		$(SHELL) -c 'for i in * ; do \
 			if test -f $$i ; then \
 			echo installing $$i; \
 			$(INSTALL_DATA) $$i $(DESTDIR)$(tabsetdir)/$$i; \
 			fi; done'
+
+NCURSES_CONFIG	= ncurses6-config
+
+install.libs :: $(DESTDIR)$(bindir) ncurses-config
+	$(INSTALL_SCRIPT) ncurses-config $(DESTDIR)$(bindir)/$(NCURSES_CONFIG)
+
+#install.libs :: pc-files $(DESTDIR)$(PKG_CONFIG_LIBDIR)
+#	$(SHELL) -c 'for name in *.pc; do $(INSTALL_DATA) $$name $(DESTDIR)$(PKG_CONFIG_LIBDIR)/$$name; done'
+
+#sources :: pc-files
+#pc-files :
+#	$(SHELL) ./gen-pkgconfig
+#	touch $@
 
 terminfo.tmp : run_tic.sed $(source)
 	echo '** adjusting tabset paths'
@@ -106,32 +121,41 @@ terminfo.tmp : run_tic.sed $(source)
 run_tic.sed :
 	WHICH_XTERM=xterm-new \
 	ticdir=${ticdir} \
-	sh $(srcdir)/gen_edit.sh >$@
+	$(SHELL) $(srcdir)/gen_edit.sh >$@
 
+$(DESTDIR)$(bindir) \
 $(DESTDIR)$(libdir) \
+$(DESTDIR)$(datadir) \
 $(DESTDIR)$(tabsetdir) \
-$(DESTDIR)$(ticdir) :
-	sh $(top_srcdir)/mkinstalldirs $@
+$(DESTDIR)$(PKG_CONFIG_LIBDIR) :
+	mkdir -p $@
 
-uninstall : uninstall.data
+uninstall : uninstall.data uninstall.libs
 
 uninstall.data :
-	-cd $(DESTDIR)$(ticdir) && rm -rf *
-	-cd $(DESTDIR)$(tabsetdir) && rm -rf *
+	-test -d $(DESTDIR)$(tabsetdir) && rm -rf $(DESTDIR)$(tabsetdir)
+	-test -d $(DESTDIR)$(ticdir) && rm -rf $(DESTDIR)$(ticdir)
+	-test -f $(DESTDIR)$(ticfile) && rm -f $(DESTDIR)$(ticfile)
+
+uninstall.libs :
+	-rm -f $(DESTDIR)$(bindir)/$(NCURSES_CONFIG)
+#	$(SHELL) 'for name in *.pc; do rm -f $(DESTDIR)$(PKG_CONFIG_LIBDIR)/$$name; done'
 
 tags :
 
-TAGS :
+#TAGS :
 
 mostlyclean :
 	-rm -f terminfo.tmp
 	-rm -f run_tic.sed
+#	-rm -f *.pc pc-files
 	-rm -f core tags TAGS *~ *.bak *.ln *.atac trace
 
 clean :: mostlyclean
 
 distclean : clean
-	-rm -f Makefile run_tic.sh
+#	-rm -f gen-pkgconfig
+	-rm -f Makefile run_tic.sh ncurses-config
 
 realclean : distclean
 

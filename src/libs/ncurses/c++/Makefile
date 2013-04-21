@@ -1,6 +1,6 @@
-# $Id: Makefile.in,v 1.77 2005/06/12 22:52:56 tom Exp $
+# $Id: Makefile.in,v 1.93 2010/11/27 21:45:27 tom Exp $
 ##############################################################################
-# Copyright (c) 1998-2004,2005 Free Software Foundation, Inc.                #
+# Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.                #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
 # copy of this software and associated documentation files (the "Software"), #
@@ -36,79 +36,94 @@
 
 SHELL		= /bin/sh
 
+
 CF_MFLAGS 	= 
 
 x		= 
-o		= .o
+o		= .lo
 
-MODEL		= ../objects
+MODEL		= ../obj_lo
 DESTDIR		= 
 srcdir		= .
-prefix		= /usr/local
+prefix		= /boot/common
 exec_prefix	= ${prefix}
 libdir		= ${exec_prefix}/lib
-includedir	= $(prefix)/include/ncurses
+includedir	= ${prefix}/include/ncurses
 
-LIBTOOL		= 
-LIBTOOL_CLEAN	= 
-LIBTOOL_COMPILE	= 
-LIBTOOL_LINK	= 
-LIBTOOL_INSTALL	= 
-LIBTOOL_UNINSTALL = 
+LIBTOOL		= /boot/common/bin/libtool --tag=CXX
+LIBTOOL_CLEAN	= ${LIBTOOL} --mode=clean
+LIBTOOL_COMPILE	= ${LIBTOOL} --mode=compile
+LIBTOOL_LINK	= ${LIBTOOL} --mode=link ${CC} ${LIBTOOL_OPTS}
+LIBTOOL_INSTALL	= ${LIBTOOL} --mode=install
+LIBTOOL_UNINSTALL = ${LIBTOOL} --mode=uninstall
+LIBTOOL_VERSION = -version-number
+LT_UNDEF	= 
 
 INSTALL		= /bin/install -c
+INSTALL_LIB	= /bin/install -c -m 644
 INSTALL_DATA	= ${INSTALL} -m 644
 
 AR		= ar
-AR_OPTS		= rv
+ARFLAGS		= -curv
 
 CXX_AR		= $(AR)
-CXX_AR_OPTS	= $(AR_OPTS)
-RANLIB		= ranlib
+CXX_ARFLAGS	= $(ARFLAGS)
+RANLIB		= :
 
-CXX		= /boot/develop/bin/g++
-CPP		= /boot/develop/bin/g++ -E
+CXX		= /boot/develop/tools/gnupro/bin/g++
+CPP		= /boot/develop/tools/gnupro/bin/g++ -E
 CXXFLAGS	= -O2 
-CXXLIBS		=  -lstdc++
+CXXLIBS		= 
 
 INCDIR		= ../include
-CPPFLAGS	= -I../c++ -I$(INCDIR) -I$(srcdir) -DHAVE_CONFIG_H -I. -I../include  -D_XOPEN_SOURCE=500 -D_POSIX_C_SOURCE=199506L -DNDEBUG -I$(includedir)
+CPPFLAGS	= -I../c++ -I$(INCDIR) -I$(srcdir) -DHAVE_CONFIG_H   -D_XOPEN_SOURCE=500  -D_POSIX_C_SOURCE=199506L -DNDEBUG -I. -I../include -I${includedir}
 
+CTAGS		= ctags
+ETAGS		= 
+
+CC		= ${CXX}
 CCFLAGS		= $(CPPFLAGS) $(CXXFLAGS)
 
 CFLAGS_LIBTOOL	= $(CCFLAGS)
 CFLAGS_NORMAL	= $(CCFLAGS)
 CFLAGS_DEBUG	= $(CCFLAGS) -g -DTRACE
 CFLAGS_PROFILE	= $(CCFLAGS) -pg
-CFLAGS_SHARED	= $(CCFLAGS) -fPIC
+CFLAGS_SHARED	= $(CCFLAGS) unknown
 
-CFLAGS_DEFAULT	= $(CFLAGS_NORMAL)
+CFLAGS_DEFAULT	= $(CFLAGS_LIBTOOL)
 
 NCURSES_MAJOR	= 5
-NCURSES_MINOR	= 5
-REL_VERSION     = 5.5
-ABI_VERSION	= 5
+NCURSES_MINOR	= 9
+REL_VERSION     = 6.0
+ABI_VERSION	= 6
 
-LINK		=  $(LIBTOOL_LINK) $(CXX) 
+LOCAL_LIBDIR	= /Sources/haiku/src/libs/ncurses/lib
+
+LINK		=  $(LIBTOOL_LINK) 
 SHLIB_DIRS	= -L../lib
-SHLIB_LIST	= $(SHLIB_DIRS) -lncurses 
+SHLIB_LIST	= $(SHLIB_DIRS) -lform -lmenu -lpanel -lncurses 
 
 LIBROOT		= ncurses++
 
 LIBNAME_LIBTOOL	= lib$(LIBROOT).la
 LIBNAME_NORMAL	= lib$(LIBROOT).a
-LIBNAME		= lib$(LIBROOT).a
+LIBNAME		= lib$(LIBROOT).la
+
+MY_LIBRARY	= ../lib/$(LIBNAME)
 
 LINK_FLAGS	=  -L../lib -l$(LIBROOT)
 
-LINK_LIBTOOL	=  -L../lib ../lib/$(LIBNAME)
+LINK_LIBTOOL	=  -L../lib $(MY_LIBRARY)
 LINK_NORMAL	= $(LINK_FLAGS)
 LINK_DEBUG	= $(LINK_FLAGS)
 LINK_PROFILE	= $(LINK_FLAGS)
 LINK_SHARED	= $(LINK_FLAGS)
 
-LDFLAGS		= -L../lib -lform -lmenu -lpanel -lncurses   \
-	   $(CXXLIBS)
+TEST_LIBS	= 
+TEST_ARGS	=  -L../lib ../lib/libform.la ../lib/libmenu.la ../lib/libpanel.la ../lib/libncurses.la   
+
+LDFLAGS		= $(TEST_ARGS)  \
+	 $(TEST_LIBS)   $(CXXLIBS)
 
 LDFLAGS_LIBTOOL	= $(LDFLAGS) $(CFLAGS_LIBTOOL)
 LDFLAGS_NORMAL	= $(LDFLAGS) $(CFLAGS_NORMAL)
@@ -116,13 +131,13 @@ LDFLAGS_DEBUG	= $(LDFLAGS) $(CFLAGS_DEBUG)
 LDFLAGS_PROFILE	= $(LDFLAGS) $(CFLAGS_PROFILE)
 LDFLAGS_SHARED	= $(LDFLAGS) $(CFLAGS_SHARED) 
 
-LDFLAGS_DEFAULT	= $(LINK_NORMAL) $(LDFLAGS_NORMAL)
+LDFLAGS_DEFAULT	= $(LINK_LIBTOOL) $(LDFLAGS_LIBTOOL)
 
 AUTO_SRC	= \
 		etip.h
 
 all \
-libs ::		$(AUTO_SRC) ../lib/$(LIBNAME)
+libs ::		$(AUTO_SRC) $(MY_LIBRARY)
 
 all ::		demo$x
 
@@ -131,7 +146,7 @@ sources :	$(AUTO_SRC)
 depend :
 
 tags:
-	ctags *.[h] *.cc
+	$(CTAGS) *.[h] *.cc
 
 # Build a conventional library for installing, since a shared library would
 # pull in all of the ncurses libraries (panel, menu, form, ncurses) as direct
@@ -147,14 +162,14 @@ LIB_OBJS = \
 	$(MODEL)/cursesmain$o
 
 ../lib/$(LIBNAME_NORMAL) : $(LIB_OBJS)
-	$(CXX_AR) $(CXX_AR_OPTS) $@ $?
+	$(CXX_AR) $(CXX_ARFLAGS) $@ $?
 	$(RANLIB) $@
 
 ../lib/$(LIBNAME_LIBTOOL) : $(LIB_OBJS)
 	cd ../lib && $(LIBTOOL_LINK) $(CXX) $(CXXFLAGS) \
 		-o $(LIBNAME) $(LIB_OBJS:$o=.lo) \
 		-rpath $(INSTALL_PREFIX)$(libdir) \
-		-version-info $(NCURSES_MAJOR):$(NCURSES_MINOR) $(SHLIB_LIST)
+		$(LIBTOOL_VERSION) $(NCURSES_MAJOR):$(NCURSES_MINOR) $(LT_UNDEF) $(SHLIB_LIST)
 
 OBJS_DEMO = $(MODEL)/demo$o
 
@@ -162,8 +177,8 @@ $(MODEL)/demo$o : $(srcdir)/demo.cc \
 	$(cursesf_h) $(cursesm_h) $(cursesapp_h)
 
 demo$x:	$(OBJS_DEMO) \
-	../lib/$(LIBNAME)  \
-	../lib/libform.a ../lib/libmenu.a ../lib/libpanel.a ../lib/libncurses.a 
+	$(MY_LIBRARY)  \
+	../lib/libform.la ../lib/libmenu.la ../lib/libpanel.la ../lib/libncurses.la 
 	 $(LINK) -o $@ $(OBJS_DEMO) $(LDFLAGS_DEFAULT)
 
 etip.h:	$(srcdir)/etip.h.in $(srcdir)/edit_cfg.sh
@@ -171,11 +186,11 @@ etip.h:	$(srcdir)/etip.h.in $(srcdir)/edit_cfg.sh
 	sh $(srcdir)/edit_cfg.sh ../include/ncurses_cfg.h $@
 
 $(DESTDIR)$(libdir) :
-	sh $(srcdir)/../mkinstalldirs $@
+	mkdir -p $@
 
 install \
-install.libs:: ../lib/$(LIBNAME) $(DESTDIR)$(libdir)
-	$(LIBTOOL_INSTALL) $(INSTALL) ../lib/$(LIBNAME) $(DESTDIR)$(libdir)/$(LIBNAME)
+install.libs:: $(MY_LIBRARY) $(DESTDIR)$(libdir)
+	$(LIBTOOL_INSTALL) $(INSTALL_LIB) $(MY_LIBRARY) $(DESTDIR)$(libdir)/$(LIBNAME)
 
 uninstall \
 uninstall.libs::
@@ -187,7 +202,7 @@ mostlyclean ::
 clean :: mostlyclean
 	-sh -c "if test -n '$x' ; then $(MAKE) clean x=''; fi"
 	-rm -rf $(MODEL)/SunWS_cache
-	-$(LIBTOOL_CLEAN) rm -f demo$x $(AUTO_SRC) ../lib/$(LIBNAME) $(LIB_OBJS) $(OBJS_DEMO)
+	-$(LIBTOOL_CLEAN) rm -f demo$x $(AUTO_SRC) $(MY_LIBRARY) $(LIB_OBJS) $(OBJS_DEMO)
 	-rm -rf .libs
 
 distclean :: clean
@@ -234,7 +249,7 @@ $(INCDIR)/panel.h :
 
 # generated by mk-0th.awk
 #   libname:    c++
-#   subsets:    termlib+ext_tinfo+base+ext_funcs
+#   subsets:    ticlib+termlib+ext_tinfo+base+ext_funcs
 
 .SUFFIXES: .c .cc .h .i .ii
 .c.i :
@@ -258,187 +273,110 @@ C_SRC = \
 lintlib :
 	@echo no action needed
 
-# generated by mk-1st.awk (subset=termlib+ext_tinfo+base+ext_funcs)
+# generated by mk-1st.awk (subset=ticlib+termlib+ext_tinfo+base+ext_funcs)
 #  name:          c++
 #  traces:        DEBUG
-#  MODEL:         NORMAL
-#  model:         objects
+#  MODEL:         LIBTOOL
+#  model:         obj_lo
 #  prefix:        lib
-#  suffix:        .a
-#  subset:        termlib+ext_tinfo+base+ext_funcs
+#  suffix:        .la
+#  subset:        ticlib+termlib+ext_tinfo+base+ext_funcs
 #  ShlibVer:      auto
 #  ShlibVerInfix: no
+#  SymLink:       ln -s -f
+#  TermlibRoot:   ncurses
+#  TermlibSuffix: .la
+#  ReLink:        no
 #  DoLinks:       no
 #  rmSoLocs:      no
 #  ldconfig:      
 #  overwrite:     no
 #  depend:        ../include/ncurses_cfg.h
-#  host:          i586-pc-beos
+#  host:          i586-pc-haiku
 
-NORMAL_OBJS = \
-	../objects/cursesf$o \
-	../objects/cursesm$o \
-	../objects/cursesp$o \
-	../objects/cursesw$o \
-	../objects/cursespad$o \
-	../objects/cursslk$o \
-	../objects/cursesapp$o \
-	../objects/cursesmain$o \
-	../objects/demo$o
+LIBTOOL_OBJS = \
+	../obj_lo/cursesf$o \
+	../obj_lo/cursesm$o \
+	../obj_lo/cursesp$o \
+	../obj_lo/cursesw$o \
+	../obj_lo/cursespad$o \
+	../obj_lo/cursslk$o \
+	../obj_lo/cursesapp$o \
+	../obj_lo/cursesmain$o \
+	../obj_lo/demo$o
 
-$(NORMAL_OBJS) : ../include/ncurses_cfg.h
+$(LIBTOOL_OBJS) : ../include/ncurses_cfg.h
 
 mostlyclean::
-	-rm -f $(NORMAL_OBJS)
+	-rm -f $(LIBTOOL_OBJS)
+	-$(LIBTOOL_CLEAN) rm -f $(LIBTOOL_OBJS:$o=.lo)
 
 clean ::
-	-rm -f $(NORMAL_OBJS)
+	-rm -f $(LIBTOOL_OBJS)
+	-$(LIBTOOL_CLEAN) rm -f $(LIBTOOL_OBJS:$o=.lo)
 
 # generated by mk-2nd.awk
-#   model:      objects
-#   MODEL:      NORMAL
+#   model:      obj_lo
+#   MODEL:      LIBTOOL
 #   echo:       yes
-#   subset:     termlib+ext_tinfo+base+ext_funcs
+#   subset:     ticlib+termlib+ext_tinfo+base+ext_funcs
 #   crenames:   yes
 #   cxxrenames: yes
 #   traces:     DEBUG
 #   srcdir:     .
 
-../objects/cursesf$o :	$(srcdir)/cursesf.cc \
+../obj_lo/cursesf$o :	$(srcdir)/cursesf.cc \
 			$(cursesf_h) \
 			$(cursesapp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_NORMAL) -c ../c++/cursesf.cc -o ../objects/cursesf$o
+	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_LIBTOOL) -c ../c++/cursesf.cc -o ../obj_lo/cursesf$o
 
-../objects/cursesm$o :	$(srcdir)/cursesm.cc \
+../obj_lo/cursesm$o :	$(srcdir)/cursesm.cc \
 			$(cursesm_h) \
 			$(cursesapp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_NORMAL) -c ../c++/cursesm.cc -o ../objects/cursesm$o
+	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_LIBTOOL) -c ../c++/cursesm.cc -o ../obj_lo/cursesm$o
 
-../objects/cursesp$o :	$(srcdir)/cursesp.cc \
+../obj_lo/cursesp$o :	$(srcdir)/cursesp.cc \
 			$(cursesp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_NORMAL) -c ../c++/cursesp.cc -o ../objects/cursesp$o
+	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_LIBTOOL) -c ../c++/cursesp.cc -o ../obj_lo/cursesp$o
 
-../objects/cursesw$o :	$(srcdir)/cursesw.cc \
+../obj_lo/cursesw$o :	$(srcdir)/cursesw.cc \
 			$(cursesw_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_NORMAL) -c ../c++/cursesw.cc -o ../objects/cursesw$o
+	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_LIBTOOL) -c ../c++/cursesw.cc -o ../obj_lo/cursesw$o
 
-../objects/cursespad$o :	$(srcdir)/cursespad.cc \
+../obj_lo/cursespad$o :	$(srcdir)/cursespad.cc \
 			$(cursesw_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_NORMAL) -c ../c++/cursespad.cc -o ../objects/cursespad$o
+	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_LIBTOOL) -c ../c++/cursespad.cc -o ../obj_lo/cursespad$o
 
-../objects/cursslk$o :	$(srcdir)/cursslk.cc \
+../obj_lo/cursslk$o :	$(srcdir)/cursslk.cc \
 			$(cursslk_h) \
 			$(cursesapp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_NORMAL) -c ../c++/cursslk.cc -o ../objects/cursslk$o
+	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_LIBTOOL) -c ../c++/cursslk.cc -o ../obj_lo/cursslk$o
 
-../objects/cursesapp$o :	$(srcdir)/cursesapp.cc \
+../obj_lo/cursesapp$o :	$(srcdir)/cursesapp.cc \
 			$(cursesapp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_NORMAL) -c ../c++/cursesapp.cc -o ../objects/cursesapp$o
+	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_LIBTOOL) -c ../c++/cursesapp.cc -o ../obj_lo/cursesapp$o
 
-../objects/cursesmain$o :	$(srcdir)/cursesmain.cc \
+../obj_lo/cursesmain$o :	$(srcdir)/cursesmain.cc \
 			$(cursesapp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_NORMAL) -c ../c++/cursesmain.cc -o ../objects/cursesmain$o
+	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_LIBTOOL) -c ../c++/cursesmain.cc -o ../obj_lo/cursesmain$o
 
-../objects/demo$o :	$(srcdir)/demo.cc \
+../obj_lo/demo$o :	$(srcdir)/demo.cc \
 			$(cursesf_h) \
 			$(cursesm_h) \
 			$(cursesapp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_NORMAL) -c ../c++/demo.cc -o ../objects/demo$o
+	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_LIBTOOL) -c ../c++/demo.cc -o ../obj_lo/demo$o
 
 
-# generated by mk-1st.awk (subset=termlib+ext_tinfo+base+ext_funcs)
-#  name:          c++
-#  traces:        DEBUG
-#  MODEL:         DEBUG
-#  model:         obj_g
-#  prefix:        lib
-#  suffix:        _g.a
-#  subset:        termlib+ext_tinfo+base+ext_funcs
-#  ShlibVer:      auto
-#  ShlibVerInfix: no
-#  DoLinks:       no
-#  rmSoLocs:      no
-#  ldconfig:      
-#  overwrite:     no
-#  depend:        ../include/ncurses_cfg.h
-#  host:          i586-pc-beos
+# generated by mk-hdr.awk
+#  subset:     ticlib+termlib+ext_tinfo+base+ext_funcs
+#  compat:     yes
 
-DEBUG_OBJS = \
-	../obj_g/cursesf$o \
-	../obj_g/cursesm$o \
-	../obj_g/cursesp$o \
-	../obj_g/cursesw$o \
-	../obj_g/cursespad$o \
-	../obj_g/cursslk$o \
-	../obj_g/cursesapp$o \
-	../obj_g/cursesmain$o \
-	../obj_g/demo$o
-
-$(DEBUG_OBJS) : ../include/ncurses_cfg.h
-
-mostlyclean::
-	-rm -f $(DEBUG_OBJS)
-
-clean ::
-	-rm -f $(DEBUG_OBJS)
-
-# generated by mk-2nd.awk
-#   model:      obj_g
-#   MODEL:      DEBUG
-#   echo:       yes
-#   subset:     termlib+ext_tinfo+base+ext_funcs
-#   crenames:   yes
-#   cxxrenames: yes
-#   traces:     DEBUG
-#   srcdir:     .
-
-../obj_g/cursesf$o :	$(srcdir)/cursesf.cc \
-			$(cursesf_h) \
-			$(cursesapp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_DEBUG) -c ../c++/cursesf.cc -o ../obj_g/cursesf$o
-
-../obj_g/cursesm$o :	$(srcdir)/cursesm.cc \
-			$(cursesm_h) \
-			$(cursesapp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_DEBUG) -c ../c++/cursesm.cc -o ../obj_g/cursesm$o
-
-../obj_g/cursesp$o :	$(srcdir)/cursesp.cc \
-			$(cursesp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_DEBUG) -c ../c++/cursesp.cc -o ../obj_g/cursesp$o
-
-../obj_g/cursesw$o :	$(srcdir)/cursesw.cc \
-			$(cursesw_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_DEBUG) -c ../c++/cursesw.cc -o ../obj_g/cursesw$o
-
-../obj_g/cursespad$o :	$(srcdir)/cursespad.cc \
-			$(cursesw_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_DEBUG) -c ../c++/cursespad.cc -o ../obj_g/cursespad$o
-
-../obj_g/cursslk$o :	$(srcdir)/cursslk.cc \
-			$(cursslk_h) \
-			$(cursesapp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_DEBUG) -c ../c++/cursslk.cc -o ../obj_g/cursslk$o
-
-../obj_g/cursesapp$o :	$(srcdir)/cursesapp.cc \
-			$(cursesapp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_DEBUG) -c ../c++/cursesapp.cc -o ../obj_g/cursesapp$o
-
-../obj_g/cursesmain$o :	$(srcdir)/cursesmain.cc \
-			$(cursesapp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_DEBUG) -c ../c++/cursesmain.cc -o ../obj_g/cursesmain$o
-
-../obj_g/demo$o :	$(srcdir)/demo.cc \
-			$(cursesf_h) \
-			$(cursesm_h) \
-			$(cursesapp_h)
-	$(LIBTOOL_COMPILE) $(CXX) $(CFLAGS_DEBUG) -c ../c++/demo.cc -o ../obj_g/demo$o
-
-$(DESTDIR)$(includedir) :
-	sh $(srcdir)/../mkinstalldirs $@
+${DESTDIR}${includedir} :
+	mkdir -p $@
 
 install \
 install.libs \
-install.includes :: $(AUTO_SRC) $(DESTDIR)$(includedir) \
+install.includes :: ${AUTO_SRC} ${DESTDIR}${includedir} \
 		$(srcdir)/cursesapp.h \
 		$(srcdir)/cursesf.h \
 		$(srcdir)/cursesm.h \
@@ -446,21 +384,21 @@ install.includes :: $(AUTO_SRC) $(DESTDIR)$(includedir) \
 		$(srcdir)/cursesw.h \
 		$(srcdir)/cursslk.h \
 		etip.h
-	@ (cd $(DESTDIR)$(includedir) && rm -f cursesapp.h) ; ../headers.sh $(INSTALL_DATA) $(DESTDIR)$(includedir) $(srcdir) $(srcdir)/cursesapp.h
-	@ (cd $(DESTDIR)$(includedir) && rm -f cursesf.h) ; ../headers.sh $(INSTALL_DATA) $(DESTDIR)$(includedir) $(srcdir) $(srcdir)/cursesf.h
-	@ (cd $(DESTDIR)$(includedir) && rm -f cursesm.h) ; ../headers.sh $(INSTALL_DATA) $(DESTDIR)$(includedir) $(srcdir) $(srcdir)/cursesm.h
-	@ (cd $(DESTDIR)$(includedir) && rm -f cursesp.h) ; ../headers.sh $(INSTALL_DATA) $(DESTDIR)$(includedir) $(srcdir) $(srcdir)/cursesp.h
-	@ (cd $(DESTDIR)$(includedir) && rm -f cursesw.h) ; ../headers.sh $(INSTALL_DATA) $(DESTDIR)$(includedir) $(srcdir) $(srcdir)/cursesw.h
-	@ (cd $(DESTDIR)$(includedir) && rm -f cursslk.h) ; ../headers.sh $(INSTALL_DATA) $(DESTDIR)$(includedir) $(srcdir) $(srcdir)/cursslk.h
-	@ (cd $(DESTDIR)$(includedir) && rm -f etip.h) ; ../headers.sh $(INSTALL_DATA) $(DESTDIR)$(includedir) $(srcdir) etip.h
+	@ (cd ${DESTDIR}${includedir} && rm -f cursesapp.h) ; ../headers.sh ${INSTALL_DATA} ${DESTDIR}${includedir} ${srcdir} $(srcdir)/cursesapp.h
+	@ (cd ${DESTDIR}${includedir} && rm -f cursesf.h) ; ../headers.sh ${INSTALL_DATA} ${DESTDIR}${includedir} ${srcdir} $(srcdir)/cursesf.h
+	@ (cd ${DESTDIR}${includedir} && rm -f cursesm.h) ; ../headers.sh ${INSTALL_DATA} ${DESTDIR}${includedir} ${srcdir} $(srcdir)/cursesm.h
+	@ (cd ${DESTDIR}${includedir} && rm -f cursesp.h) ; ../headers.sh ${INSTALL_DATA} ${DESTDIR}${includedir} ${srcdir} $(srcdir)/cursesp.h
+	@ (cd ${DESTDIR}${includedir} && rm -f cursesw.h) ; ../headers.sh ${INSTALL_DATA} ${DESTDIR}${includedir} ${srcdir} $(srcdir)/cursesw.h
+	@ (cd ${DESTDIR}${includedir} && rm -f cursslk.h) ; ../headers.sh ${INSTALL_DATA} ${DESTDIR}${includedir} ${srcdir} $(srcdir)/cursslk.h
+	@ (cd ${DESTDIR}${includedir} && rm -f etip.h) ; ../headers.sh ${INSTALL_DATA} ${DESTDIR}${includedir} ${srcdir} etip.h
 
 uninstall \
 uninstall.libs \
 uninstall.includes ::
-	-@ (cd $(DESTDIR)$(includedir) && rm -f cursesapp.h)
-	-@ (cd $(DESTDIR)$(includedir) && rm -f cursesf.h)
-	-@ (cd $(DESTDIR)$(includedir) && rm -f cursesm.h)
-	-@ (cd $(DESTDIR)$(includedir) && rm -f cursesp.h)
-	-@ (cd $(DESTDIR)$(includedir) && rm -f cursesw.h)
-	-@ (cd $(DESTDIR)$(includedir) && rm -f cursslk.h)
-	-@ (cd $(DESTDIR)$(includedir) && rm -f etip.h)
+	-@ (cd ${DESTDIR}${includedir} && rm -f cursesapp.h)
+	-@ (cd ${DESTDIR}${includedir} && rm -f cursesf.h)
+	-@ (cd ${DESTDIR}${includedir} && rm -f cursesm.h)
+	-@ (cd ${DESTDIR}${includedir} && rm -f cursesp.h)
+	-@ (cd ${DESTDIR}${includedir} && rm -f cursesw.h)
+	-@ (cd ${DESTDIR}${includedir} && rm -f cursslk.h)
+	-@ (cd ${DESTDIR}${includedir} && rm -f etip.h)

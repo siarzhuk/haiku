@@ -1,6 +1,6 @@
-# $Id: Makefile.in,v 1.65 2005/09/25 00:42:08 tom Exp $
+# $Id: Makefile.in,v 1.85 2010/11/27 21:45:27 tom Exp $
 ##############################################################################
-# Copyright (c) 1998-2003,2005 Free Software Foundation, Inc.                #
+# Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.                #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
 # copy of this software and associated documentation files (the "Software"), #
@@ -27,7 +27,7 @@
 # authorization.                                                             #
 ##############################################################################
 #
-# Author: Thomas E. Dickey 1996-2003
+# Author: Thomas E. Dickey 1996-on
 #
 # Makefile for ncurses source code.
 #
@@ -43,45 +43,49 @@
 .SUFFIXES:
 
 SHELL		= /bin/sh
+
 THIS		= Makefile
 
 CF_MFLAGS 	= 
 
 
 x		= 
-o		= .o
+o		= .lo
 
-MODEL		= ../objects
+MODEL		= ../obj_lo
 DESTDIR		= 
 top_srcdir	= ..
 srcdir		= .
-prefix		= /usr/local
+prefix		= /boot/common
 exec_prefix	= ${prefix}
 bindir		= ${exec_prefix}/bin
 libdir		= ${exec_prefix}/lib
-includedir	= $(prefix)/include/ncurses
-datadir		= ${prefix}/share
+includedir	= ${prefix}/include/ncurses
+datadir		= /boot/common/data
 
-LIBTOOL		= 
-LIBTOOL_CLEAN	= 
-LIBTOOL_COMPILE	= 
-LIBTOOL_LINK	= 
-LIBTOOL_INSTALL	= 
-LIBTOOL_UNINSTALL = 
+LIBTOOL		= /boot/common/bin/libtool --tag=CC
+LIBTOOL_CLEAN	= ${LIBTOOL} --mode=clean
+LIBTOOL_COMPILE	= ${LIBTOOL} --mode=compile
+LIBTOOL_LINK	= ${LIBTOOL} --mode=link ${CC} ${LIBTOOL_OPTS}
+LIBTOOL_INSTALL	= ${LIBTOOL} --mode=install
+LIBTOOL_UNINSTALL = ${LIBTOOL} --mode=uninstall
 
 INSTALL		= /bin/install -c
-INSTALL_PROGRAM	= ${INSTALL}
+INSTALL_PROG	= ${INSTALL}
 transform	= s,x,x,
 
 AWK		= gawk
-LN_S		= ln -s
+LN_S		= ln -s -f
+
+CTAGS		= ctags
+ETAGS		= 
 
 CC		= gcc
 CPP		= gcc -E
-CFLAGS		= -O2
+CFLAGS		= -O2 --param max-inline-insns-single=1200
 
 INCDIR		= $(top_srcdir)/include
-CPPFLAGS	= -I../progs -I$(srcdir) -DHAVE_CONFIG_H -I. -I../include  -D_XOPEN_SOURCE=500 -D_POSIX_C_SOURCE=199506L -DNDEBUG -I$(includedir)
+CPPFLAGS	= -I../progs -I$(srcdir) -DHAVE_CONFIG_H   -D_XOPEN_SOURCE=500  -D_POSIX_C_SOURCE=199506L -DNDEBUG -I. -I../include -I${includedir}
 
 CCFLAGS		= $(CPPFLAGS) $(CFLAGS)
 
@@ -89,14 +93,17 @@ CFLAGS_LIBTOOL	= $(CCFLAGS)
 CFLAGS_NORMAL	= $(CCFLAGS)
 CFLAGS_DEBUG	= $(CCFLAGS) -g -DTRACE
 CFLAGS_PROFILE	= $(CCFLAGS) -pg
-CFLAGS_SHARED	= $(CCFLAGS) -fPIC
+CFLAGS_SHARED	= $(CCFLAGS) unknown
 
-CFLAGS_DEFAULT	= $(CFLAGS_NORMAL)
+CFLAGS_DEFAULT	= $(CFLAGS_LIBTOOL)
+
+REL_VERSION	= 6.0
+ABI_VERSION	= 6
+LOCAL_LIBDIR	= /Sources/haiku/src/libs/ncurses/lib
 
 LD		= ld
-LINK		=  $(LIBTOOL_LINK) $(CC)
-LDFLAGS		=  \
-		-L../lib -lncurses   
+LINK		=  $(LIBTOOL_LINK)
+LDFLAGS		=  
 
 LDFLAGS_LIBTOOL	= $(LDFLAGS) $(CFLAGS_LIBTOOL)
 LDFLAGS_NORMAL	= $(LDFLAGS) $(CFLAGS_NORMAL)
@@ -104,7 +111,13 @@ LDFLAGS_DEBUG	= $(LDFLAGS) $(CFLAGS_DEBUG)
 LDFLAGS_PROFILE	= $(LDFLAGS) $(CFLAGS_PROFILE) 
 LDFLAGS_SHARED	= $(LDFLAGS) $(CFLAGS_SHARED) 
 
-LDFLAGS_DEFAULT	= $(LDFLAGS_NORMAL)
+LDFLAGS_DEFAULT	= $(LDFLAGS_LIBTOOL)
+
+LIBS_TIC	=  -L../lib -lncurses -L../lib -lncurses   
+LDFLAGS_TIC	= $(LDFLAGS_LIBTOOL) $(LIBS_TIC)
+
+LIBS_TINFO	=  -L../lib -lncurses   
+LDFLAGS_TINFO	= $(LDFLAGS_LIBTOOL) $(LIBS_TINFO)
 
 LINT		= 
 LINT_OPTS	= 
@@ -114,15 +127,13 @@ AUTO_SRC = \
 	termsort.c \
 	transform.h
 
-# tic and toe rely on direct access to the terminfo database
-GET_PROGS = infocmp$x clear$x tput$x tset$x
-PUT_PROGS =  tic$x toe$x
+# tic relies on direct access to the terminfo database
+GET_PROGS = infocmp$x clear$x tabs$x tput$x tset$x toe$x
+PUT_PROGS =  tic$x
 PROGS = $(PUT_PROGS) $(GET_PROGS)
 
-TESTPROGS = mvcur$x tctest$x hardscroll$x hashmap$x
-
 # Default library, for linking applications
-DEPS_CURSES = ../lib/libncurses.a
+DEPS_CURSES = ../lib/libncurses.la
 
 HEADER_DEPS	= \
 	../include/curses.h \
@@ -145,36 +156,51 @@ uninstall.libs:
 
 TRANSFORM = sed 's/$x$$//'|sed '$(transform)'|sed 's/$$/$x/'
 
+# transformed names for installing files
 actual_captoinfo = `echo captoinfo$x| $(TRANSFORM)`
 actual_clear     = `echo clear$x|     $(TRANSFORM)`
 actual_infocmp   = `echo infocmp$x|   $(TRANSFORM)`
 actual_infotocap = `echo infotocap$x| $(TRANSFORM)`
 actual_init      = `echo init$x|      $(TRANSFORM)`
 actual_reset     = `echo reset$x|     $(TRANSFORM)`
+actual_tabs      = `echo tabs$x|      $(TRANSFORM)`
 actual_tic       = `echo tic$x|       $(TRANSFORM)`
 actual_toe       = `echo toe$x|       $(TRANSFORM)`
 actual_tput      = `echo tput$x|      $(TRANSFORM)`
 actual_tset      = `echo tset$x|      $(TRANSFORM)`
 
+# transformed names for comparing at runtime
+define_captoinfo = `echo captoinfo|   $(TRANSFORM)`
+define_infotocap = `echo infotocap|   $(TRANSFORM)`
+define_init      = `echo init|        $(TRANSFORM)`
+define_reset     = `echo reset|       $(TRANSFORM)`
+
 transform.h :
-	echo "#define PROG_CAPTOINFO \"$(actual_captoinfo)\"" >$@
-	echo "#define PROG_INFOTOCAP \"$(actual_infotocap)\"" >>$@
-	echo "#define PROG_RESET     \"$(actual_reset)\""     >>$@
-	echo "#define PROG_INIT      \"$(actual_init)\""      >>$@
+	echo "#ifndef __TRANSFORM_H"					>$@
+	echo "#define __TRANSFORM_H 1"					>>$@
+	echo "#include <progs.priv.h>"					>>$@
+	echo "extern bool same_program(const char *, const char *);"	>>$@
+	-sh -c 'if test -n "$x" ; then echo "#define SUFFIX_IGNORED \"$x\"">>$@; fi'
+	echo "#define PROG_CAPTOINFO \"$(define_captoinfo)\""		>>$@
+	echo "#define PROG_INFOTOCAP \"$(define_infotocap)\""		>>$@
+	echo "#define PROG_RESET     \"$(define_reset)\""		>>$@
+	echo "#define PROG_INIT      \"$(define_init)\""		>>$@
+	echo "#endif /* __TRANSFORM_H */"				>>$@
 
 install.progs: $(AUTO_SRC) $(PROGS) $(DESTDIR)$(bindir)
-	$(LIBTOOL_INSTALL) $(INSTALL_PROGRAM) tic$x     $(DESTDIR)$(bindir)/$(actual_tic)
-	$(LIBTOOL_INSTALL) $(INSTALL_PROGRAM) toe$x     $(DESTDIR)$(bindir)/$(actual_toe)
+	$(LIBTOOL_INSTALL) $(INSTALL_PROG) tic$x     $(DESTDIR)$(bindir)/$(actual_tic)
+	$(LIBTOOL_INSTALL) $(INSTALL_PROG) toe$x     $(DESTDIR)$(bindir)/$(actual_toe)
 	@echo "linking $(actual_infotocap) to $(actual_tic)"
 	-@rm -f $(DESTDIR)$(bindir)/$(actual_infotocap)
 	(cd $(DESTDIR)$(bindir) && $(LN_S) $(actual_tic) $(actual_infotocap))
 	@echo "linking $(actual_captoinfo) to $(actual_tic)"
 	-@rm -f $(DESTDIR)$(bindir)/$(actual_captoinfo)
 	(cd $(DESTDIR)$(bindir) && $(LN_S) $(actual_tic) $(actual_captoinfo))
-	$(LIBTOOL_INSTALL) $(INSTALL_PROGRAM) infocmp$x $(DESTDIR)$(bindir)/$(actual_infocmp)
-	$(LIBTOOL_INSTALL) $(INSTALL_PROGRAM) clear$x   $(DESTDIR)$(bindir)/$(actual_clear)
-	$(LIBTOOL_INSTALL) $(INSTALL_PROGRAM) tput$x    $(DESTDIR)$(bindir)/$(actual_tput)
-	$(LIBTOOL_INSTALL) $(INSTALL_PROGRAM) tset$x    $(DESTDIR)$(bindir)/$(actual_tset)
+	$(LIBTOOL_INSTALL) $(INSTALL_PROG) infocmp$x $(DESTDIR)$(bindir)/$(actual_infocmp)
+	$(LIBTOOL_INSTALL) $(INSTALL_PROG) clear$x   $(DESTDIR)$(bindir)/$(actual_clear)
+	$(LIBTOOL_INSTALL) $(INSTALL_PROG) tabs$x    $(DESTDIR)$(bindir)/$(actual_tabs)
+	$(LIBTOOL_INSTALL) $(INSTALL_PROG) tput$x    $(DESTDIR)$(bindir)/$(actual_tput)
+	$(LIBTOOL_INSTALL) $(INSTALL_PROG) tset$x    $(DESTDIR)$(bindir)/$(actual_tset)
 	@echo "linking $(actual_reset) to $(actual_tset)"
 	-@rm -f $(DESTDIR)$(bindir)/$(actual_reset)
 	(cd $(DESTDIR)$(bindir) && $(LN_S) $(actual_tset) $(actual_reset))
@@ -186,12 +212,13 @@ uninstall.progs:
 	-@rm -f $(DESTDIR)$(bindir)/$(actual_infotocap)
 	-@$(LIBTOOL_CLEAN) rm -f $(DESTDIR)$(bindir)/$(actual_infocmp)
 	-@$(LIBTOOL_CLEAN) rm -f $(DESTDIR)$(bindir)/$(actual_clear)
+	-@$(LIBTOOL_CLEAN) rm -f $(DESTDIR)$(bindir)/$(actual_tabs)
 	-@$(LIBTOOL_CLEAN) rm -f $(DESTDIR)$(bindir)/$(actual_tput)
 	-@$(LIBTOOL_CLEAN) rm -f $(DESTDIR)$(bindir)/$(actual_tset)
 	-@rm -f $(DESTDIR)$(bindir)/$(actual_reset)
 
 $(DESTDIR)$(bindir) :
-	sh $(srcdir)/../mkinstalldirs $@
+	mkdir -p $@
 
 #
 # Utilities normally built by make all start here
@@ -199,43 +226,50 @@ $(DESTDIR)$(bindir) :
 
 DEPS_TIC = \
 	$(MODEL)/tic$o \
-	$(MODEL)/dump_entry$o
+	$(MODEL)/dump_entry$o \
+	$(MODEL)/transform$o
 
 tic$x: $(DEPS_TIC) $(DEPS_CURSES) transform.h
-	 $(LINK) $(DEPS_TIC) $(LDFLAGS_DEFAULT) -o $@
+	 $(LINK) $(DEPS_TIC) $(LDFLAGS_TIC) -o $@
 
 DEPS_TOE = \
-	$(MODEL)/toe$o \
-	$(MODEL)/dump_entry$o
+	$(MODEL)/toe$o
 
 toe$x: $(DEPS_TOE) $(DEPS_CURSES)
-	 $(LINK) $(DEPS_TOE) $(LDFLAGS_DEFAULT) -o $@
+	 $(LINK) $(DEPS_TOE) $(LDFLAGS_TIC) -o $@
 
 DEPS_CLEAR = \
 	$(MODEL)/clear$o
 
 clear$x: $(DEPS_CLEAR) $(DEPS_CURSES)
-	 $(LINK) $(DEPS_CLEAR) $(LDFLAGS_DEFAULT) -o $@
+	 $(LINK) $(DEPS_CLEAR) $(LDFLAGS_TINFO) -o $@
+
+DEPS_TABS = \
+	$(MODEL)/tabs$o
+
+tabs$x: $(DEPS_TABS) $(DEPS_TABS)
+	 $(LINK) $(DEPS_TABS) $(LDFLAGS_TINFO) -o $@
 
 DEPS_TPUT = \
-	$(MODEL)/tput$o
+	$(MODEL)/tput$o \
+	$(MODEL)/transform$o
 
 tput$x: $(DEPS_TPUT) $(DEPS_CURSES) transform.h
-	 $(LINK) $(DEPS_TPUT) $(LDFLAGS_DEFAULT) -o $@
+	 $(LINK) $(DEPS_TPUT) $(LDFLAGS_TINFO) -o $@
 
 DEPS_INFOCMP = \
 	$(MODEL)/infocmp$o \
 	$(MODEL)/dump_entry$o
 
 infocmp$x: $(DEPS_INFOCMP) $(DEPS_CURSES)
-	 $(LINK) $(DEPS_INFOCMP) $(LDFLAGS_DEFAULT) -o $@
+	 $(LINK) $(DEPS_INFOCMP) $(LDFLAGS_TIC) -o $@
 
 DEPS_TSET = \
 	$(MODEL)/tset$o \
-	$(MODEL)/dump_entry$o
+	$(MODEL)/transform$o
 
 tset$x: $(DEPS_TSET) $(DEPS_CURSES) transform.h
-	 $(LINK) $(DEPS_TSET) $(LDFLAGS_DEFAULT) -o $@
+	 $(LINK) $(DEPS_TSET) $(LDFLAGS_TINFO) -o $@
 
 termsort.c: $(srcdir)/MKtermsort.sh
 	sh $(srcdir)/MKtermsort.sh $(AWK) $(srcdir)/../include/Caps >$@
@@ -245,14 +279,13 @@ termsort.c: $(srcdir)/MKtermsort.sh
 #
 
 tags:
-	ctags *.[ch]
+	$(CTAGS) *.[ch]
 
-TAGS:
-	etags *.[ch]
+#TAGS:
+#	$(ETAGS) *.[ch]
 
 mostlyclean ::
 	-rm -f core tags TAGS *~ *.bak *.i *.ln *.atac trace
-	-rm -f $(TESTPROGS)
 
 clean :: mostlyclean
 	-sh -c "if test -n '$x' ; then $(MAKE) clean x=''; fi"
@@ -278,6 +311,7 @@ lint:
 	$(LINT) $(LINT_OPTS) $(CPPFLAGS) $(srcdir)/toe.c     $(srcdir)/dump_entry.c $(LINT_LIBS)
 	$(LINT) $(LINT_OPTS) $(CPPFLAGS) $(srcdir)/clear.c                          $(LINT_LIBS)
 	$(LINT) $(LINT_OPTS) $(CPPFLAGS) $(srcdir)/infocmp.c $(srcdir)/dump_entry.c $(LINT_LIBS)
+	$(LINT) $(LINT_OPTS) $(CPPFLAGS) $(srcdir)/tabs.c                           $(LINT_LIBS)
 	$(LINT) $(LINT_OPTS) $(CPPFLAGS) $(srcdir)/tput.c                           $(LINT_LIBS)
 	$(LINT) $(LINT_OPTS) $(CPPFLAGS) $(srcdir)/tset.c    $(srcdir)/dump_entry.c $(LINT_LIBS)
 
@@ -287,7 +321,7 @@ lint:
 
 # generated by mk-0th.awk
 #   libname:    progs
-#   subsets:    termlib+ext_tinfo+base+ext_funcs
+#   subsets:    ticlib+termlib+ext_tinfo+base+ext_funcs
 
 .SUFFIXES: .c .cc .h .i .ii
 .c.i :
@@ -303,184 +337,118 @@ C_SRC = \
 	$(srcdir)/toe.c \
 	$(srcdir)/dump_entry.c \
 	$(srcdir)/infocmp.c \
+	$(srcdir)/tabs.c \
 	$(srcdir)/tput.c \
-	$(srcdir)/tset.c
+	$(srcdir)/tset.c \
+	$(srcdir)/transform.c
 
 lintlib :
 	@echo no action needed
 
-# generated by mk-1st.awk (subset=termlib+ext_tinfo+base+ext_funcs)
+# generated by mk-1st.awk (subset=ticlib+termlib+ext_tinfo+base+ext_funcs)
 #  name:          progs
 #  traces:        DEBUG
-#  MODEL:         NORMAL
-#  model:         objects
+#  MODEL:         LIBTOOL
+#  model:         obj_lo
 #  prefix:        lib
-#  suffix:        .a
-#  subset:        termlib+ext_tinfo+base+ext_funcs
+#  suffix:        .la
+#  subset:        ticlib+termlib+ext_tinfo+base+ext_funcs
 #  ShlibVer:      auto
 #  ShlibVerInfix: no
+#  SymLink:       ln -s -f
+#  TermlibRoot:   ncurses
+#  TermlibSuffix: .la
+#  ReLink:        no
 #  DoLinks:       no
 #  rmSoLocs:      no
 #  ldconfig:      
 #  overwrite:     no
 #  depend:        ../include/ncurses_cfg.h ./progs.priv.h
-#  host:          i586-pc-beos
+#  host:          i586-pc-haiku
 
-NORMAL_OBJS = \
-	../objects/clear$o \
-	../objects/tic$o \
-	../objects/toe$o \
-	../objects/dump_entry$o \
-	../objects/infocmp$o \
-	../objects/tput$o \
-	../objects/tset$o
+LIBTOOL_OBJS = \
+	../obj_lo/clear$o \
+	../obj_lo/tic$o \
+	../obj_lo/toe$o \
+	../obj_lo/dump_entry$o \
+	../obj_lo/infocmp$o \
+	../obj_lo/tabs$o \
+	../obj_lo/tput$o \
+	../obj_lo/tset$o \
+	../obj_lo/transform$o
 
-$(NORMAL_OBJS) : ../include/ncurses_cfg.h ./progs.priv.h
+$(LIBTOOL_OBJS) : ../include/ncurses_cfg.h ./progs.priv.h
 
 mostlyclean::
-	-rm -f $(NORMAL_OBJS)
+	-rm -f $(LIBTOOL_OBJS)
+	-$(LIBTOOL_CLEAN) rm -f $(LIBTOOL_OBJS:$o=.lo)
 
 clean ::
-	-rm -f $(NORMAL_OBJS)
+	-rm -f $(LIBTOOL_OBJS)
+	-$(LIBTOOL_CLEAN) rm -f $(LIBTOOL_OBJS:$o=.lo)
 
 # generated by mk-2nd.awk
-#   model:      objects
-#   MODEL:      NORMAL
+#   model:      obj_lo
+#   MODEL:      LIBTOOL
 #   echo:       yes
-#   subset:     termlib+ext_tinfo+base+ext_funcs
+#   subset:     ticlib+termlib+ext_tinfo+base+ext_funcs
 #   crenames:   yes
 #   cxxrenames: yes
 #   traces:     DEBUG
 #   srcdir:     .
 
-../objects/clear$o :	$(srcdir)/clear.c \
+../obj_lo/clear$o :	$(srcdir)/clear.c \
 			$(HEADER_DEPS)
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_NORMAL) -c ../progs/clear.c -o ../objects/clear$o
+	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_LIBTOOL) -c ../progs/clear.c -o ../obj_lo/clear$o
 
-../objects/tic$o :	$(srcdir)/tic.c \
+../obj_lo/tic$o :	$(srcdir)/tic.c \
 			$(HEADER_DEPS) \
 			transform.h \
 			$(srcdir)/dump_entry.h
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_NORMAL) -c ../progs/tic.c -o ../objects/tic$o
+	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_LIBTOOL) -c ../progs/tic.c -o ../obj_lo/tic$o
 
-../objects/toe$o :	$(srcdir)/toe.c \
+../obj_lo/toe$o :	$(srcdir)/toe.c \
 			$(HEADER_DEPS) \
-			$(srcdir)/dump_entry.h
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_NORMAL) -c ../progs/toe.c -o ../objects/toe$o
+			$(INCDIR)/hashed_db.h
+	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_LIBTOOL) -c ../progs/toe.c -o ../obj_lo/toe$o
 
-../objects/dump_entry$o :	$(srcdir)/dump_entry.c \
+../obj_lo/dump_entry$o :	$(srcdir)/dump_entry.c \
 			$(HEADER_DEPS) \
 			$(srcdir)/dump_entry.h \
 			../include/parametrized.h \
 			$(INCDIR)/capdefaults.c \
 			termsort.c
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_NORMAL) -c ../progs/dump_entry.c -o ../objects/dump_entry$o
+	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_LIBTOOL) -c ../progs/dump_entry.c -o ../obj_lo/dump_entry$o
 
-../objects/infocmp$o :	$(srcdir)/infocmp.c \
+../obj_lo/infocmp$o :	$(srcdir)/infocmp.c \
 			$(HEADER_DEPS) \
 			$(srcdir)/dump_entry.h
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_NORMAL) -c ../progs/infocmp.c -o ../objects/infocmp$o
+	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_LIBTOOL) -c ../progs/infocmp.c -o ../obj_lo/infocmp$o
 
-../objects/tput$o :	$(srcdir)/tput.c \
-			$(HEADER_DEPS) \
-			transform.h \
-			termsort.c
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_NORMAL) -c ../progs/tput.c -o ../objects/tput$o
-
-../objects/tset$o :	$(srcdir)/tset.c \
-			$(HEADER_DEPS) \
-			transform.h \
-			$(srcdir)/dump_entry.h \
-			../include/termcap.h
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_NORMAL) -c ../progs/tset.c -o ../objects/tset$o
-
-
-# generated by mk-1st.awk (subset=termlib+ext_tinfo+base+ext_funcs)
-#  name:          progs
-#  traces:        DEBUG
-#  MODEL:         DEBUG
-#  model:         obj_g
-#  prefix:        lib
-#  suffix:        _g.a
-#  subset:        termlib+ext_tinfo+base+ext_funcs
-#  ShlibVer:      auto
-#  ShlibVerInfix: no
-#  DoLinks:       no
-#  rmSoLocs:      no
-#  ldconfig:      
-#  overwrite:     no
-#  depend:        ../include/ncurses_cfg.h ./progs.priv.h
-#  host:          i586-pc-beos
-
-DEBUG_OBJS = \
-	../obj_g/clear$o \
-	../obj_g/tic$o \
-	../obj_g/toe$o \
-	../obj_g/dump_entry$o \
-	../obj_g/infocmp$o \
-	../obj_g/tput$o \
-	../obj_g/tset$o
-
-$(DEBUG_OBJS) : ../include/ncurses_cfg.h ./progs.priv.h
-
-mostlyclean::
-	-rm -f $(DEBUG_OBJS)
-
-clean ::
-	-rm -f $(DEBUG_OBJS)
-
-# generated by mk-2nd.awk
-#   model:      obj_g
-#   MODEL:      DEBUG
-#   echo:       yes
-#   subset:     termlib+ext_tinfo+base+ext_funcs
-#   crenames:   yes
-#   cxxrenames: yes
-#   traces:     DEBUG
-#   srcdir:     .
-
-../obj_g/clear$o :	$(srcdir)/clear.c \
+../obj_lo/tabs$o :	$(srcdir)/tabs.c \
 			$(HEADER_DEPS)
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_DEBUG) -c ../progs/clear.c -o ../obj_g/clear$o
+	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_LIBTOOL) -c ../progs/tabs.c -o ../obj_lo/tabs$o
 
-../obj_g/tic$o :	$(srcdir)/tic.c \
+../obj_lo/tput$o :	$(srcdir)/tput.c \
 			$(HEADER_DEPS) \
 			transform.h \
-			$(srcdir)/dump_entry.h
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_DEBUG) -c ../progs/tic.c -o ../obj_g/tic$o
-
-../obj_g/toe$o :	$(srcdir)/toe.c \
-			$(HEADER_DEPS) \
-			$(srcdir)/dump_entry.h
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_DEBUG) -c ../progs/toe.c -o ../obj_g/toe$o
-
-../obj_g/dump_entry$o :	$(srcdir)/dump_entry.c \
-			$(HEADER_DEPS) \
 			$(srcdir)/dump_entry.h \
-			../include/parametrized.h \
-			$(INCDIR)/capdefaults.c \
 			termsort.c
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_DEBUG) -c ../progs/dump_entry.c -o ../obj_g/dump_entry$o
+	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_LIBTOOL) -c ../progs/tput.c -o ../obj_lo/tput$o
 
-../obj_g/infocmp$o :	$(srcdir)/infocmp.c \
-			$(HEADER_DEPS) \
-			$(srcdir)/dump_entry.h
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_DEBUG) -c ../progs/infocmp.c -o ../obj_g/infocmp$o
-
-../obj_g/tput$o :	$(srcdir)/tput.c \
-			$(HEADER_DEPS) \
-			transform.h \
-			termsort.c
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_DEBUG) -c ../progs/tput.c -o ../obj_g/tput$o
-
-../obj_g/tset$o :	$(srcdir)/tset.c \
+../obj_lo/tset$o :	$(srcdir)/tset.c \
 			$(HEADER_DEPS) \
 			transform.h \
 			$(srcdir)/dump_entry.h \
 			../include/termcap.h
-	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_DEBUG) -c ../progs/tset.c -o ../obj_g/tset$o
+	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_LIBTOOL) -c ../progs/tset.c -o ../obj_lo/tset$o
 
-depend : $(AUTO_SRC)
-	makedepend -- $(CPPFLAGS) -- $(C_SRC)
+../obj_lo/transform$o :	$(srcdir)/transform.c \
+			$(HEADER_DEPS) \
+			transform.h
+	$(LIBTOOL_COMPILE) $(CC) $(CFLAGS_LIBTOOL) -c ../progs/transform.c -o ../obj_lo/transform$o
+
+depend : ${AUTO_SRC}
+	makedepend -- ${CPPFLAGS} -- ${C_SRC}
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.

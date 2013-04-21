@@ -1,9 +1,31 @@
-/*
- * THIS CODE IS SPECIFICALLY EXEMPTED FROM THE NCURSES PACKAGE COPYRIGHT.
- * You may freely copy it for use as a template for your own field types.
- * If you develop a field type that might be of general use, please send
- * it back to the ncurses maintainers for inclusion in the next version.
- */
+/****************************************************************************
+ * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
+ *                                                                          *
+ * Permission is hereby granted, free of charge, to any person obtaining a  *
+ * copy of this software and associated documentation files (the            *
+ * "Software"), to deal in the Software without restriction, including      *
+ * without limitation the rights to use, copy, modify, merge, publish,      *
+ * distribute, distribute with modifications, sublicense, and/or sell       *
+ * copies of the Software, and to permit persons to whom the Software is    *
+ * furnished to do so, subject to the following conditions:                 *
+ *                                                                          *
+ * The above copyright notice and this permission notice shall be included  *
+ * in all copies or substantial portions of the Software.                   *
+ *                                                                          *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS  *
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF               *
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.   *
+ * IN NO EVENT SHALL THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,   *
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR    *
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR    *
+ * THE USE OR OTHER DEALINGS IN THE SOFTWARE.                               *
+ *                                                                          *
+ * Except as contained in this notice, the name(s) of the above copyright   *
+ * holders shall not be used in advertising or otherwise to promote the     *
+ * sale, use or other dealings in this Software without prior written       *
+ * authorization.                                                           *
+ ****************************************************************************/
+
 /***************************************************************************
 *                                                                          *
 *  Author : Juergen Pfeifer                                                *
@@ -12,7 +34,7 @@
 
 #include "form.priv.h"
 
-MODULE_ID("$Id: fty_int.c,v 1.19 2005/08/20 18:26:16 tom Exp $")
+MODULE_ID("$Id: fty_int.c,v 1.25 2010/01/23 21:14:36 tom Exp $")
 
 #if USE_WIDEC_SUPPORT
 #define isDigit(c) (iswdigit((wint_t)(c)) || isdigit(UChar(c)))
@@ -30,6 +52,41 @@ typedef struct
   }
 thisARG;
 
+typedef struct
+  {
+    int precision;
+    long low;
+    long high;
+  }
+integerPARM;
+
+/*---------------------------------------------------------------------------
+|   Facility      :  libnform  
+|   Function      :  static void *Generic_This_Type( void * arg )
+|   
+|   Description   :  Allocate structure for integer type argument.
+|
+|   Return Values :  Pointer to argument structure or NULL on error
++--------------------------------------------------------------------------*/
+static void *
+Generic_This_Type(void *arg)
+{
+  thisARG *argp = (thisARG *) 0;
+  thisARG *param = (thisARG *) arg;
+
+  if (param)
+    {
+      argp = typeMalloc(thisARG, 1);
+
+      if (argp)
+	{
+	  T((T_CREATE("thisARG %p"), (void *)argp));
+	  *argp = *param;
+	}
+    }
+  return (void *)argp;
+}
+
 /*---------------------------------------------------------------------------
 |   Facility      :  libnform  
 |   Function      :  static void *Make_This_Type( va_list * ap )
@@ -41,15 +98,13 @@ thisARG;
 static void *
 Make_This_Type(va_list *ap)
 {
-  thisARG *argp = (thisARG *) malloc(sizeof(thisARG));
+  thisARG arg;
 
-  if (argp)
-    {
-      argp->precision = va_arg(*ap, int);
-      argp->low = va_arg(*ap, long);
-      argp->high = va_arg(*ap, long);
-    }
-  return (void *)argp;
+  arg.precision = va_arg(*ap, int);
+  arg.low = va_arg(*ap, long);
+  arg.high = va_arg(*ap, long);
+
+  return Generic_This_Type((void *)&arg);
 }
 
 /*---------------------------------------------------------------------------
@@ -68,9 +123,12 @@ Copy_This_Type(const void *argp)
 
   if (argp)
     {
-      result = (thisARG *) malloc(sizeof(thisARG));
+      result = typeMalloc(thisARG, 1);
       if (result)
-	*result = *ap;
+	{
+	  T((T_CREATE("thisARG %p"), (void *)result));
+	  *result = *ap;
+	}
     }
   return (void *)result;
 }
@@ -209,12 +267,27 @@ static FIELDTYPE typeTHIS =
   Make_This_Type,
   Copy_This_Type,
   Free_This_Type,
-  Check_This_Field,
-  Check_This_Character,
-  NULL,
-  NULL
+  INIT_FT_FUNC(Check_This_Field),
+  INIT_FT_FUNC(Check_This_Character),
+  INIT_FT_FUNC(NULL),
+  INIT_FT_FUNC(NULL),
+#if NCURSES_INTEROP_FUNCS
+  Generic_This_Type
+#endif
 };
 
 NCURSES_EXPORT_VAR(FIELDTYPE*) TYPE_INTEGER = &typeTHIS;
+
+#if NCURSES_INTEROP_FUNCS
+/* The next routines are to simplify the use of ncurses from
+   programming languages with restictions on interop with C level
+   constructs (e.g. variable access or va_list + ellipsis constructs)
+*/
+NCURSES_EXPORT(FIELDTYPE *)
+_nc_TYPE_INTEGER(void)
+{
+  return TYPE_INTEGER;
+}
+#endif
 
 /* fty_int.c ends here */

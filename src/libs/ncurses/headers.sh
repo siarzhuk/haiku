@@ -11,8 +11,8 @@ done
 DST=$1
 REF=$2
 SRC=$3
-TMPSRC=${TMPDIR-/tmp}/`basename $SRC`$$
-TMPSED=${TMPDIR-/tmp}/headers.sed$$
+TMPSRC=${TMPDIR:-/tmp}/`basename $SRC`$$
+TMPSED=${TMPDIR:-/tmp}/headers.sed$$
 echo installing $SRC in $DST
 case $DST in
 /*/include/*)

@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998,2000,2001 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2008,2010 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -35,7 +35,7 @@
 #include <ctype.h>
 #include <tic.h>
 
-MODULE_ID("$Id: comp_expand.c,v 1.17 2001/09/22 19:16:52 tom Exp $")
+MODULE_ID("$Id: comp_expand.c,v 1.21 2010/01/16 17:11:23 tom Exp $")
 
 static int
 trailing_spaces(const char *src)
@@ -50,18 +50,26 @@ trailing_spaces(const char *src)
 #define REALPRINT(s) (UChar(*(s)) < 127 && isprint(UChar(*(s))))
 
 NCURSES_EXPORT(char *)
-_nc_tic_expand
-(const char *srcp, bool tic_format, int numbers)
+_nc_tic_expand(const char *srcp, bool tic_format, int numbers)
 {
     static char *buffer;
     static size_t length;
 
     int bufp;
-    const char *str = VALID_STRING(srcp) ? srcp : "";
+    const char *str = VALID_STRING(srcp) ? srcp : "\0\0";
     bool islong = (strlen(str) > 3);
     size_t need = (2 + strlen(str)) * 4;
     int ch;
 
+#if NO_LEAKS
+    if (srcp == 0) {
+	if (buffer != 0) {
+	    FreeAndNull(buffer);
+	    length = 0;
+	}
+	return 0;
+    }
+#endif
     if (buffer == 0 || need > length) {
 	if ((buffer = typeRealloc(char, length = need, buffer)) == 0)
 	      return 0;
@@ -83,7 +91,7 @@ _nc_tic_expand
 		    && REALPRINT(str + 1)
 		    && str[2] == S_QUOTE) {
 		    sprintf(buffer + bufp, "{%d}", str[1]);
-		    bufp += strlen(buffer + bufp);
+		    bufp += (int) strlen(buffer + bufp);
 		    str += 2;
 		} else {
 		    buffer[bufp++] = *str;
@@ -111,7 +119,7 @@ _nc_tic_expand
 			if (ch == '\\'
 			    || ch == S_QUOTE)
 			    buffer[bufp++] = '\\';
-			buffer[bufp++] = ch;
+			buffer[bufp++] = (char) ch;
 			buffer[bufp++] = S_QUOTE;
 			str = dst;
 		    } else {
@@ -140,13 +148,13 @@ _nc_tic_expand
 	    buffer[bufp++] = 's';
 	} else if ((ch == ',' || ch == ':' || ch == '^') && tic_format) {
 	    buffer[bufp++] = '\\';
-	    buffer[bufp++] = ch;
+	    buffer[bufp++] = (char) ch;
 	} else if (REALPRINT(str)
 		   && (ch != ','
 		       && ch != ':'
 		       && !(ch == '!' && !tic_format)
 		       && ch != '^'))
-	    buffer[bufp++] = ch;
+	    buffer[bufp++] = (char) ch;
 #if 0				/* FIXME: this would be more readable (in fact the whole 'islong' logic should be removed) */
 	else if (ch == '\b') {
 	    buffer[bufp++] = '\\';

@@ -1,6 +1,6 @@
-# $Id: Makefile.in,v 1.24 2005/01/29 19:30:06 tom Exp $
+# $Id: Makefile.in,v 1.30 2010/11/27 21:45:27 tom Exp $
 ##############################################################################
-# Copyright (c) 1998-2004,2005 Free Software Foundation, Inc.                #
+# Copyright (c) 1998-2008,2010 Free Software Foundation, Inc.                #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
 # copy of this software and associated documentation files (the "Software"), #
@@ -33,28 +33,32 @@
 
 SHELL = /bin/sh
 
+
 DESTDIR=
 CF_MFLAGS =  DESTDIR="$(DESTDIR)"
 
 
 
 NCURSES_MAJOR	= 5
-NCURSES_MINOR	= 5
-NCURSES_PATCH	= 20051010
+NCURSES_MINOR	= 9
+NCURSES_PATCH	= 20110404
 
-prefix		= /usr/local
+top_srcdir	= .
+srcdir		= .
+
+prefix		= /boot/common
 exec_prefix	= ${prefix}
 
 bindir		= ${exec_prefix}/bin
-ticdir		= /usr/local/share/terminfo
-includedir	= $(prefix)/include/ncurses
+ticdir		= /boot/common/data/terminfo
+includedir	= ${prefix}/include/ncurses
 libdir		= ${exec_prefix}/lib
-mandir		= ${prefix}/man
+mandir		= /boot/common/documentation/man
 
 INSTALL		= /bin/install -c
 INSTALL_DATA	= ${INSTALL} -m 644
 
-DIRS_TO_MAKE	= lib objects obj_g
+DIRS_TO_MAKE	= lib obj_lo
 
 all ::	$(DIRS_TO_MAKE)
 
@@ -83,6 +87,13 @@ preinstall :
 		fgrep NCURSES_VERSION $(includedir)/curses.h >/dev/null || \
 		echo '** Will overwrite non-ncurses curses.h'
 
+dlls:	libs
+	$(SHELL) $(srcdir)/mk-dlls.sh
+
+distclean \
+realclean ::
+	-rm -f mk-dlls.sh mingw_arch
+
 # Put the common rules here so that we can easily construct the list of
 # directories to visit.
 all \
@@ -95,24 +106,23 @@ sources \
 tags \
 uninstall \
 install ::
-	cd man && $(MAKE) $(CF_MFLAGS) $@
-	cd include && $(MAKE) $(CF_MFLAGS) $@
-	cd ncurses && $(MAKE) $(CF_MFLAGS) $@
-	cd progs && $(MAKE) $(CF_MFLAGS) $@
-	cd tack && $(MAKE) $(CF_MFLAGS) $@
-	cd panel && $(MAKE) $(CF_MFLAGS) $@
-	cd menu && $(MAKE) $(CF_MFLAGS) $@
-	cd form && $(MAKE) $(CF_MFLAGS) $@
-	cd test && $(MAKE) $(CF_MFLAGS) $@
-	cd misc && $(MAKE) $(CF_MFLAGS) $@
-	cd c++ && $(MAKE) $(CF_MFLAGS) $@
+	cd man && ${MAKE} ${CF_MFLAGS} $@
+	cd include && ${MAKE} ${CF_MFLAGS} $@
+	cd ncurses && ${MAKE} ${CF_MFLAGS} $@
+	cd progs && ${MAKE} ${CF_MFLAGS} $@
+	cd panel && ${MAKE} ${CF_MFLAGS} $@
+	cd menu && ${MAKE} ${CF_MFLAGS} $@
+	cd form && ${MAKE} ${CF_MFLAGS} $@
+	cd test && ${MAKE} ${CF_MFLAGS} $@
+	cd misc && ${MAKE} ${CF_MFLAGS} $@
+	cd c++ && ${MAKE} ${CF_MFLAGS} $@
 
 libs \
 install.libs \
 uninstall.libs \
 install.includes \
 uninstall.includes ::
-	cd include && $(MAKE) $(CF_MFLAGS) $@
+	cd include && ${MAKE} ${CF_MFLAGS} $@
 
 lint \
 libs \
@@ -121,7 +131,7 @@ install.libs \
 uninstall.libs \
 install.ncurses \
 uninstall.ncurses ::
-	cd ncurses && $(MAKE) $(CF_MFLAGS) $@
+	cd ncurses && ${MAKE} ${CF_MFLAGS} $@
 
 lint \
 libs \
@@ -130,16 +140,7 @@ install.libs \
 uninstall.libs \
 install.progs \
 uninstall.progs ::
-	cd progs && $(MAKE) $(CF_MFLAGS) $@
-
-lint \
-libs \
-lintlib \
-install.libs \
-uninstall.libs \
-install.tack \
-uninstall.tack ::
-	cd tack && $(MAKE) $(CF_MFLAGS) $@
+	cd progs && ${MAKE} ${CF_MFLAGS} $@
 
 install.includes \
 uninstall.includes \
@@ -150,7 +151,7 @@ install.libs \
 uninstall.libs \
 install.panel \
 uninstall.panel ::
-	cd panel && $(MAKE) $(CF_MFLAGS) $@
+	cd panel && ${MAKE} ${CF_MFLAGS} $@
 
 install.includes \
 uninstall.includes \
@@ -161,7 +162,7 @@ install.libs \
 uninstall.libs \
 install.menu \
 uninstall.menu ::
-	cd menu && $(MAKE) $(CF_MFLAGS) $@
+	cd menu && ${MAKE} ${CF_MFLAGS} $@
 
 install.includes \
 uninstall.includes \
@@ -172,7 +173,7 @@ install.libs \
 uninstall.libs \
 install.form \
 uninstall.form ::
-	cd form && $(MAKE) $(CF_MFLAGS) $@
+	cd form && ${MAKE} ${CF_MFLAGS} $@
 
 lint \
 libs \
@@ -181,7 +182,7 @@ install.libs \
 uninstall.libs \
 install.test \
 uninstall.test ::
-	cd test && $(MAKE) $(CF_MFLAGS) $@
+	cd test && ${MAKE} ${CF_MFLAGS} $@
 
 install.includes \
 uninstall.includes \
@@ -191,17 +192,18 @@ install.libs \
 uninstall.libs \
 install.c++ \
 uninstall.c++ ::
-	cd c++ && $(MAKE) $(CF_MFLAGS) $@
+	cd c++ && ${MAKE} ${CF_MFLAGS} $@
 
-install.data \
-uninstall.data ::
-	cd misc && $(MAKE) $(CF_MFLAGS) $@
+install.libs uninstall.libs \
+install.data uninstall.data ::
+	cd misc && ${MAKE} ${CF_MFLAGS} $@
 
 install.man \
 uninstall.man ::
-	cd man && $(MAKE) $(CF_MFLAGS) $@
+	cd man && ${MAKE} ${CF_MFLAGS} $@
 
 distclean ::
 	rm -f config.cache config.log config.status Makefile include/ncurses_cfg.h
-	rm -f headers.sh headers.sed
-	rm -rf $(DIRS_TO_MAKE)
+	rm -f headers.sh headers.sed mk_shared_lib.sh
+	rm -f edit_man.* man_alias.*
+	rm -rf ${DIRS_TO_MAKE}

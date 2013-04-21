@@ -13,20 +13,12 @@
 #define BSD_TPUTS 0
 #endif
 
-#ifndef CC_HAS_INLINE_FUNCS
-#define CC_HAS_INLINE_FUNCS 0
-#endif
-
 #ifndef CC_HAS_PROTOS
 #define CC_HAS_PROTOS 0
 #endif
 
 #ifndef CPP_HAS_PARAM_INIT
 #define CPP_HAS_PARAM_INIT 0
-#endif
-
-#ifndef CPP_HAS_VSCAN_FUNC
-#define CPP_HAS_VSCAN_FUNC 0
 #endif
 
 #ifndef CURSES_ACS_ARRAY
@@ -73,6 +65,14 @@
 #define HAVE_BUILTIN_H 0
 #endif
 
+#ifndef HAVE_CHGAT
+#define HAVE_CHGAT 1
+#endif
+
+#ifndef HAVE_COLOR_SET
+#define HAVE_COLOR_SET 1
+#endif
+
 #ifndef HAVE_DIRENT_H
 #define HAVE_DIRENT_H 0
 #endif
@@ -85,8 +85,20 @@
 #define HAVE_FCNTL_H 0
 #endif
 
+#ifndef HAVE_FILTER
+#define HAVE_FILTER 1
+#endif
+
 #ifndef HAVE_FORM_H
 #define HAVE_FORM_H 0
+#endif
+
+#ifndef HAVE_GETBEGX
+#define HAVE_GETBEGX 1
+#endif
+
+#ifndef HAVE_GETCURX
+#define HAVE_GETCURX 1
 #endif
 
 #ifndef HAVE_GETCWD
@@ -101,6 +113,10 @@
 #define HAVE_GETEUID 0
 #endif
 
+#ifndef HAVE_GETMAXX
+#define HAVE_GETMAXX 1
+#endif
+
 #ifndef HAVE_GETNSTR
 #define HAVE_GETNSTR 0
 #endif
@@ -109,12 +125,20 @@
 #define HAVE_GETOPT_H 0
 #endif
 
+#ifndef HAVE_GETPARX
+#define HAVE_GETPARX 1
+#endif
+
 #ifndef HAVE_GETTIMEOFDAY
 #define HAVE_GETTIMEOFDAY 0
 #endif
 
 #ifndef HAVE_GETTTYNAM
 #define HAVE_GETTTYNAM 0
+#endif
+
+#ifndef HAVE_GETWIN
+#define HAVE_GETWIN 1
 #endif
 
 #ifndef HAVE_GPM_H
@@ -131,6 +155,10 @@
 
 #ifndef HAVE_HAS_KEY
 #define HAVE_HAS_KEY 0
+#endif
+
+#ifndef HAVE_IOSTREAM
+#define HAVE_IOSTREAM 0
 #endif
 
 #ifndef HAVE_ISASCII
@@ -193,6 +221,10 @@
 #define HAVE_LONG_FILE_NAMES 0
 #endif
 
+#ifndef HAVE_MATH_H
+#define HAVE_MATH_H 0
+#endif
+
 #ifndef HAVE_MBLEN
 #define HAVE_MBLEN 0
 #endif
@@ -205,6 +237,14 @@
 #define HAVE_MBRTOWC 0
 #endif
 
+#ifndef HAVE_MBSRTOWCS
+#define HAVE_MBSRTOWCS 0
+#endif
+
+#ifndef HAVE_MBSTOWCS
+#define HAVE_MBSTOWCS 0
+#endif
+
 #ifndef HAVE_MBTOWC
 #define HAVE_MBTOWC 0
 #endif
@@ -215,6 +255,14 @@
 
 #ifndef HAVE_MKSTEMP
 #define HAVE_MKSTEMP 0
+#endif
+
+#ifndef HAVE_MVVLINE
+#define HAVE_MVVLINE 1
+#endif
+
+#ifndef HAVE_MVWVLINE
+#define HAVE_MVWVLINE 1
 #endif
 
 #ifndef HAVE_NANOSLEEP
@@ -245,6 +293,10 @@
 #define HAVE_PUTWC 0
 #endif
 
+#ifndef HAVE_PUTWIN
+#define HAVE_PUTWIN 1
+#endif
+
 #ifndef HAVE_REGEXPR_H_FUNCS
 #define HAVE_REGEXPR_H_FUNCS 0
 #endif
@@ -265,6 +317,18 @@
 #define HAVE_RESIZETERM 0
 #endif
 
+#ifndef HAVE_RESIZE_TERM
+#define HAVE_RESIZE_TERM 0
+#endif
+
+#ifndef HAVE_RIPOFFLINE
+#define HAVE_RIPOFFLINE 1
+#endif
+
+#ifndef HAVE_SCR_DUMP
+#define HAVE_SCR_DUMP 1
+#endif
+
 #ifndef HAVE_SELECT
 #define HAVE_SELECT 0
 #endif
@@ -277,8 +341,16 @@
 #define HAVE_SETBUFFER 0
 #endif
 
+#ifndef HAVE_SETUPTERM
+#define HAVE_SETUPTERM 1
+#endif
+
 #ifndef HAVE_SETVBUF
 #define HAVE_SETVBUF 0
+#endif
+
+#ifndef HAVE_SGTTY_H
+#define HAVE_SGTTY_H 0
 #endif
 
 #ifndef HAVE_SIGACTION
@@ -295,6 +367,10 @@
 
 #ifndef HAVE_SLK_COLOR
 #define HAVE_SLK_COLOR 0
+#endif
+
+#ifndef HAVE_SLK_INIT
+#define HAVE_SLK_INIT 1
 #endif
 
 #ifndef HAVE_STRDUP
@@ -357,6 +433,10 @@
 #define HAVE_TELL 0
 #endif
 
+#ifndef HAVE_TERMATTRS
+#define HAVE_TERMATTRS 1
+#endif
+
 #ifndef HAVE_TERMIOS_H
 #define HAVE_TERMIOS_H 0
 #endif
@@ -365,12 +445,40 @@
 #define HAVE_TERMIO_H 0
 #endif
 
+#ifndef HAVE_TERMNAME
+#define HAVE_TERMNAME 1
+#endif
+
+#ifndef HAVE_TERM_ENTRY_H
+#define HAVE_TERM_ENTRY_H 1
+#endif
+
+#ifndef HAVE_TERM_H
+#define HAVE_TERM_H 1
+#endif
+
+#ifndef HAVE_TGETENT
+#define HAVE_TGETENT 1
+#endif
+
+#ifndef HAVE_TIGETNUM
+#define HAVE_TIGETNUM 1
+#endif
+
+#ifndef HAVE_TIGETSTR
+#define HAVE_TIGETSTR 1
+#endif
+
 #ifndef HAVE_TIMES
 #define HAVE_TIMES 0
 #endif
 
 #ifndef HAVE_TTYENT_H
 #define HAVE_TTYENT_H 0
+#endif
+
+#ifndef HAVE_TYPEAHEAD
+#define HAVE_TYPEAHEAD 1
 #endif
 
 #ifndef HAVE_TYPEINFO
@@ -409,6 +517,14 @@
 #define HAVE_VSSCANF 0
 #endif
 
+#ifndef HAVE_WCSRTOMBS
+#define HAVE_WCSRTOMBS 0
+#endif
+
+#ifndef HAVE_WCSTOMBS
+#define HAVE_WCSTOMBS 0
+#endif
+
 #ifndef HAVE_WCTOB
 #define HAVE_WCTOB 0
 #endif
@@ -421,6 +537,10 @@
 #define HAVE_WCTYPE_H 0
 #endif
 
+#ifndef HAVE_WINSSTR
+#define HAVE_WINSSTR 1
+#endif
+
 #ifndef HAVE_WORKING_POLL
 #define HAVE_WORKING_POLL 0
 #endif
@@ -429,12 +549,20 @@
 #define HAVE_WRESIZE 0
 #endif
 
+#ifndef HAVE_WSYNCDOWN
+#define HAVE_WSYNCDOWN 1
+#endif
+
 #ifndef HAVE__DOSCAN
 #define HAVE__DOSCAN 0
 #endif
 
 #ifndef MIXEDCASE_FILENAMES
 #define MIXEDCASE_FILENAMES 0
+#endif
+
+#ifndef NCURSES_CHAR_EQ
+#define NCURSES_CHAR_EQ 0
 #endif
 
 #ifndef NCURSES_EXPANDED
@@ -449,20 +577,12 @@
 #define NCURSES_EXT_FUNCS 0
 #endif
 
-#ifndef NCURSES_NOMACROS
-#define NCURSES_NOMACROS 0
-#endif
-
 #ifndef NCURSES_NO_PADDING
 #define NCURSES_NO_PADDING 0
 #endif
 
 #ifndef NCURSES_PATHSEP
 #define NCURSES_PATHSEP ':'
-#endif
-
-#ifndef NDEBUG
-#define NDEBUG 0
 #endif
 
 #ifndef NEED_PTEM_H
@@ -533,6 +653,10 @@
 #define USE_HARD_TABS 0
 #endif
 
+#ifndef USE_HASHED_DB
+#define USE_HASHED_DB 0
+#endif
+
 #ifndef USE_HASHMAP
 #define USE_HASHMAP 0
 #endif
@@ -553,8 +677,16 @@
 #define USE_OK_BCOPY 0
 #endif
 
+#ifndef USE_PTHREADS_EINTR
+#define USE_PTHREADS_EINTR 0
+#endif
+
 #ifndef USE_RCS_IDS
 #define USE_RCS_IDS 0
+#endif
+
+#ifndef USE_REENTRANT
+#define USE_REENTRANT 0
 #endif
 
 #ifndef USE_SAFE_SPRINTF
@@ -569,18 +701,6 @@
 #define USE_SIGWINCH 0
 #endif
 
-#ifndef USE_STDIO_VSCAN
-#define USE_STDIO_VSCAN 0
-#endif
-
-#ifndef USE_STRSTREAM_VSCAN
-#define USE_STRSTREAM_VSCAN 0
-#endif
-
-#ifndef USE_STRSTREAM_VSCAN_CAST
-#define USE_STRSTREAM_VSCAN_CAST 0
-#endif
-
 #ifndef USE_SYMLINKS
 #define USE_SYMLINKS 0
 #endif
@@ -591,6 +711,10 @@
 
 #ifndef USE_TERMCAP
 #define USE_TERMCAP 0
+#endif
+
+#ifndef USE_WEAK_SYMBOLS
+#define USE_WEAK_SYMBOLS 0
 #endif
 
 #ifndef USE_WIDEC_SUPPORT

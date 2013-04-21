@@ -1,5 +1,32 @@
 #!/bin/sh
-# $Id: MKfallback.sh,v 1.11 2001/12/02 01:55:30 tom Exp $
+##############################################################################
+# Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.                #
+#                                                                            #
+# Permission is hereby granted, free of charge, to any person obtaining a    #
+# copy of this software and associated documentation files (the "Software"), #
+# to deal in the Software without restriction, including without limitation  #
+# the rights to use, copy, modify, merge, publish, distribute, distribute    #
+# with modifications, sublicense, and/or sell copies of the Software, and to #
+# permit persons to whom the Software is furnished to do so, subject to the  #
+# following conditions:                                                      #
+#                                                                            #
+# The above copyright notice and this permission notice shall be included in #
+# all copies or substantial portions of the Software.                        #
+#                                                                            #
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR #
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,   #
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL    #
+# THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER      #
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING    #
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER        #
+# DEALINGS IN THE SOFTWARE.                                                  #
+#                                                                            #
+# Except as contained in this notice, the name(s) of the above copyright     #
+# holders shall not be used in advertising or otherwise to promote the sale, #
+# use or other dealings in this Software without prior written               #
+# authorization.                                                             #
+##############################################################################
+# $Id: MKfallback.sh,v 1.15 2010/08/07 20:32:34 tom Exp $
 #
 # MKfallback.sh -- create fallback table for entry reads
 #
@@ -15,6 +42,17 @@ shift
 terminfo_src=$1
 shift
 
+tic_path=$1
+shift
+
+case $tic_path in #(vi
+/*)
+	tic_head=`echo "$tic_path" | sed -e 's,/[^/]*$,,'`
+	PATH=$tic_head:$PATH
+	export PATH
+	;;
+esac
+
 if test $# != 0 ; then
 	tmp_info=tmp_info
 	echo creating temporary terminfo directory... >&2
@@ -25,7 +63,7 @@ if test $# != 0 ; then
 	TERMINFO_DIRS=$TERMINFO:$terminfo_dir
 	export TERMINFO_DIRS
 
-	tic $terminfo_src >&2
+	$tic_path -x $terminfo_src >&2
 else
 	tmp_info=
 fi
@@ -36,7 +74,6 @@ cat <<EOF
  */
 
 #include <curses.priv.h>
-#include <term.h>
 
 EOF
 

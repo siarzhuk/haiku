@@ -6,7 +6,7 @@
 #if BROKEN_LINKER
 static
 #endif
-struct tinfo_fkeys _nc_tinfo_fkeys[] = {
+const struct tinfo_fkeys _nc_tinfo_fkeys[] = {
 	{  139, KEY_A1           },	/* key_a1 */
 	{  140, KEY_A3           },	/* key_a3 */
 	{  141, KEY_B2           },	/* key_b2 */

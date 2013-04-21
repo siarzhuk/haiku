@@ -3,7 +3,7 @@
  *
  * Note: this file is generated using MKtermsort.sh, do not edit by hand.
  */
-static const int bool_terminfo_sort[] = {
+static const PredIdx bool_terminfo_sort[] = {
 	 40 ,	/*  OTMT  */
 	 41 ,	/*  OTNL  */
 	 37 ,	/*  OTbs  */
@@ -50,7 +50,7 @@ static const int bool_terminfo_sort[] = {
 	 33 ,	/*  xvpa  */
 };
 
-static const int num_terminfo_sort[] = {
+static const PredIdx num_terminfo_sort[] = {
 	 36 ,	/*  OTdB  */
 	 34 ,	/*  OTdC  */
 	 35 ,	/*  OTdN  */
@@ -92,7 +92,7 @@ static const int num_terminfo_sort[] = {
 	 4 ,	/*  xmc  */
 };
 
-static const int str_terminfo_sort[] = {
+static const PredIdx str_terminfo_sort[] = {
 	 402 ,	/*  OTG1  */
 	 400 ,	/*  OTG2  */
 	 401 ,	/*  OTG3  */
@@ -509,7 +509,7 @@ static const int str_terminfo_sort[] = {
 	 353 ,	/*  zerom  */
 };
 
-static const int bool_variable_sort[] = {
+static const PredIdx bool_variable_sort[] = {
 	 0 ,	/*  auto_left_margin  */
 	 1 ,	/*  auto_right_margin  */
 	 28 ,	/*  back_color_erase  */
@@ -556,7 +556,7 @@ static const int bool_variable_sort[] = {
 	 20 ,	/*  xon_xoff  */
 };
 
-static const int num_variable_sort[] = {
+static const PredIdx num_variable_sort[] = {
 	 36 ,	/*  backspace_delay  */
 	 31 ,	/*  bit_image_entwining  */
 	 32 ,	/*  bit_image_type  */
@@ -598,7 +598,7 @@ static const int num_variable_sort[] = {
 	 7 ,	/*  width_status_line  */
 };
 
-static const int str_variable_sort[] = {
+static const PredIdx str_variable_sort[] = {
 	 406 ,	/*  acs_btee  */
 	 146 ,	/*  acs_chars  */
 	 408 ,	/*  acs_hline  */
@@ -1015,7 +1015,7 @@ static const int str_variable_sort[] = {
 	 353 ,	/*  zero_motion  */
 };
 
-static const int bool_termcap_sort[] = {
+static const PredIdx bool_termcap_sort[] = {
 	 22 ,	/*  5i  */
 	 23 ,	/*  HC  */
 	 40 ,	/*  MT  */
@@ -1062,7 +1062,7 @@ static const int bool_termcap_sort[] = {
 	 17 ,	/*  xt  */
 };
 
-static const int num_termcap_sort[] = {
+static const PredIdx num_termcap_sort[] = {
 	 30 ,	/*  BT  */
 	 13 ,	/*  Co  */
 	 12 ,	/*  MW  */
@@ -1104,7 +1104,7 @@ static const int num_termcap_sort[] = {
 	 7 ,	/*  ws  */
 };
 
-static const int str_termcap_sort[] = {
+static const PredIdx str_termcap_sort[] = {
 	 212 ,	/*  !1  */
 	 213 ,	/*  !2  */
 	 214 ,	/*  !3  */

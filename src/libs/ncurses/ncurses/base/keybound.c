@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1999-2003,2005 Free Software Foundation, Inc.              *
+ * Copyright (c) 1999-2006,2009 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -27,26 +27,34 @@
  ****************************************************************************/
 
 /****************************************************************************
- *  Author: Thomas E. Dickey <dickey@clark.net> 1999                        *
+ *  Author: Thomas E. Dickey                        1999-on                 *
+ *     and: Juergen Pfeifer                         2009                    *
  ****************************************************************************/
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: keybound.c,v 1.5 2005/04/30 16:53:42 tom Exp $")
+MODULE_ID("$Id: keybound.c,v 1.10 2009/10/24 22:15:47 tom Exp $")
 
 /*
  * Returns the count'th string definition which is associated with the
  * given keycode.  The result is malloc'd, must be freed by the caller.
  */
-
 NCURSES_EXPORT(char *)
-keybound(int code, int count)
+NCURSES_SP_NAME(keybound) (NCURSES_SP_DCLx int code, int count)
 {
     char *result = 0;
 
-    T((T_CALLED("keybound(%d,%d)"), code, count));
-    if (SP != 0) {
-	result = _nc_expand_try(SP->_keytry, code, &count, 0);
+    T((T_CALLED("keybound(%p, %d,%d)"), (void *) SP_PARM, code, count));
+    if (SP_PARM != 0 && code >= 0) {
+	result = _nc_expand_try(SP_PARM->_keytry, (unsigned) code, &count, 0);
     }
     returnPtr(result);
 }
+
+#if NCURSES_SP_FUNCS
+NCURSES_EXPORT(char *)
+keybound(int code, int count)
+{
+    return NCURSES_SP_NAME(keybound) (CURRENT_SCREEN, code, count);
+}
+#endif

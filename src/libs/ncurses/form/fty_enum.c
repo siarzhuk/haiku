@@ -1,10 +1,31 @@
+/****************************************************************************
+ * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
+ *                                                                          *
+ * Permission is hereby granted, free of charge, to any person obtaining a  *
+ * copy of this software and associated documentation files (the            *
+ * "Software"), to deal in the Software without restriction, including      *
+ * without limitation the rights to use, copy, modify, merge, publish,      *
+ * distribute, distribute with modifications, sublicense, and/or sell       *
+ * copies of the Software, and to permit persons to whom the Software is    *
+ * furnished to do so, subject to the following conditions:                 *
+ *                                                                          *
+ * The above copyright notice and this permission notice shall be included  *
+ * in all copies or substantial portions of the Software.                   *
+ *                                                                          *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS  *
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF               *
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.   *
+ * IN NO EVENT SHALL THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,   *
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR    *
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR    *
+ * THE USE OR OTHER DEALINGS IN THE SOFTWARE.                               *
+ *                                                                          *
+ * Except as contained in this notice, the name(s) of the above copyright   *
+ * holders shall not be used in advertising or otherwise to promote the     *
+ * sale, use or other dealings in this Software without prior written       *
+ * authorization.                                                           *
+ ****************************************************************************/
 
-/*
- * THIS CODE IS SPECIFICALLY EXEMPTED FROM THE NCURSES PACKAGE COPYRIGHT.
- * You may freely copy it for use as a template for your own field types.
- * If you develop a field type that might be of general use, please send
- * it back to the ncurses maintainers for inclusion in the next version.
- */
 /***************************************************************************
 *                                                                          *
 *  Author : Juergen Pfeifer                                                *
@@ -13,7 +34,7 @@
 
 #include "form.priv.h"
 
-MODULE_ID("$Id: fty_enum.c,v 1.19 2004/05/29 19:05:20 tom Exp $")
+MODULE_ID("$Id: fty_enum.c,v 1.26 2010/05/01 21:11:07 tom Exp $")
 
 typedef struct
   {
@@ -23,6 +44,77 @@ typedef struct
     bool checkunique;
   }
 enumARG;
+
+typedef struct
+  {
+    char **kwds;
+    int ccase;
+    int cunique;
+  }
+enumParams;
+
+/*---------------------------------------------------------------------------
+|   Facility      :  libnform  
+|   Function      :  static void *Generic_Enum_Type(void * arg)
+|   
+|   Description   :  Allocate structure for enumeration type argument.
+|
+|   Return Values :  Pointer to argument structure or NULL on error
++--------------------------------------------------------------------------*/
+static void *
+Generic_Enum_Type(void *arg)
+{
+  enumARG *argp = (enumARG *)0;
+  enumParams *params = (enumParams *) arg;
+
+  if (params)
+    {
+      argp = typeMalloc(enumARG, 1);
+
+      if (argp)
+	{
+	  int cnt = 0;
+	  char **kp = (char **)0;
+	  char **kwds = (char **)0;
+	  char **kptarget;
+	  int ccase, cunique;
+
+	  T((T_CREATE("enumARG %p"), (void *)argp));
+	  kwds = params->kwds;
+	  ccase = params->ccase;
+	  cunique = params->cunique;
+
+	  argp->checkcase = ccase ? TRUE : FALSE;
+	  argp->checkunique = cunique ? TRUE : FALSE;
+	  argp->kwds = (char **)0;
+
+	  kp = kwds;
+	  while (kp && (*kp++))
+	    cnt++;
+	  argp->count = cnt;
+
+	  if (cnt > 0)
+	    {
+	      /* We copy the keywords, because we can't rely on the fact
+	         that the caller doesn't relocate or free the memory used
+	         for the keywords (maybe he has GC)
+	       */
+	      argp->kwds = typeMalloc(char *, cnt + 1);
+
+	      kp = kwds;
+	      if ((kptarget = argp->kwds) != 0)
+		{
+		  while (kp && (*kp))
+		    {
+		      (*kptarget++) = strdup(*kp++);
+		    }
+		  *kptarget = (char *)0;
+		}
+	    }
+	}
+    }
+  return (void *)argp;
+}
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnform  
@@ -35,27 +127,13 @@ enumARG;
 static void *
 Make_Enum_Type(va_list *ap)
 {
-  enumARG *argp = (enumARG *)malloc(sizeof(enumARG));
+  enumParams params;
 
-  if (argp)
-    {
-      int cnt = 0;
-      char **kp = (char **)0;
-      int ccase, cunique;
+  params.kwds = va_arg(*ap, char **);
+  params.ccase = va_arg(*ap, int);
+  params.cunique = va_arg(*ap, int);
 
-      argp->kwds = va_arg(*ap, char **);
-      ccase = va_arg(*ap, int);
-      cunique = va_arg(*ap, int);
-
-      argp->checkcase = ccase ? TRUE : FALSE;
-      argp->checkunique = cunique ? TRUE : FALSE;
-
-      kp = argp->kwds;
-      while (kp && (*kp++))
-	cnt++;
-      argp->count = cnt;
-    }
-  return (void *)argp;
+  return Generic_Enum_Type((void *)&params);
 }
 
 /*---------------------------------------------------------------------------
@@ -75,10 +153,29 @@ Copy_Enum_Type(const void *argp)
     {
       const enumARG *ap = (const enumARG *)argp;
 
-      result = (enumARG *)malloc(sizeof(enumARG));
+      result = typeMalloc(enumARG, 1);
 
       if (result)
-	*result = *ap;
+	{
+	  T((T_CREATE("enumARG %p"), (void *)result));
+	  *result = *ap;
+
+	  if (ap->count > 0)
+	    {
+	      char **kptarget;
+	      char **kp = ap->kwds;
+	      result->kwds = typeMalloc(char *, 1 + ap->count);
+
+	      if ((kptarget = result->kwds) != 0)
+		{
+		  while (kp && (*kp))
+		    {
+		      (*kptarget++) = strdup(*kp++);
+		    }
+		  *kptarget = (char *)0;
+		}
+	    }
+	}
     }
   return (void *)result;
 }
@@ -95,7 +192,24 @@ static void
 Free_Enum_Type(void *argp)
 {
   if (argp)
-    free(argp);
+    {
+      const enumARG *ap = (const enumARG *)argp;
+
+      if (ap->kwds && ap->count > 0)
+	{
+	  char **kp = ap->kwds;
+	  int cnt = 0;
+
+	  while (kp && (*kp))
+	    {
+	      free(*kp++);
+	      cnt++;
+	    }
+	  assert(cnt == ap->count);
+	  free(ap->kwds);
+	}
+      free(argp);
+    }
 }
 
 #define SKIP_SPACE(x) while(((*(x))!='\0') && (is_blank(*(x)))) (x)++
@@ -301,13 +415,28 @@ static FIELDTYPE typeENUM =
   Make_Enum_Type,
   Copy_Enum_Type,
   Free_Enum_Type,
-  Check_Enum_Field,
-  NULL,
-  Next_Enum,
-  Previous_Enum
+  INIT_FT_FUNC(Check_Enum_Field),
+  INIT_FT_FUNC(NULL),
+  INIT_FT_FUNC(Next_Enum),
+  INIT_FT_FUNC(Previous_Enum),
+#if NCURSES_INTEROP_FUNCS
+  Generic_Enum_Type
+#endif
 };
 
 NCURSES_EXPORT_VAR(FIELDTYPE *)
 TYPE_ENUM = &typeENUM;
+
+#if NCURSES_INTEROP_FUNCS
+/* The next routines are to simplify the use of ncurses from
+   programming languages with restictions on interop with C level
+   constructs (e.g. variable access or va_list + ellipsis constructs)
+*/
+NCURSES_EXPORT(FIELDTYPE *)
+_nc_TYPE_ENUM(void)
+{
+  return TYPE_ENUM;
+}
+#endif
 
 /* fty_enum.c ends here */

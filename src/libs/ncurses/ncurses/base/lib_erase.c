@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998,2000,2001 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2005,2009 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,6 +29,7 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
  ****************************************************************************/
 
 /*
@@ -40,7 +41,7 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_erase.c,v 1.15 2001/12/19 01:06:13 tom Exp $")
+MODULE_ID("$Id: lib_erase.c,v 1.17 2009/10/24 22:32:29 tom Exp $")
 
 NCURSES_EXPORT(int)
 werase(WINDOW *win)
@@ -50,13 +51,31 @@ werase(WINDOW *win)
     NCURSES_CH_T blank;
     NCURSES_CH_T *sp, *end, *start;
 
-    T((T_CALLED("werase(%p)"), win));
+    T((T_CALLED("werase(%p)"), (void *) win));
 
     if (win) {
 	blank = win->_nc_bkgd;
 	for (y = 0; y <= win->_maxy; y++) {
 	    start = win->_line[y].text;
 	    end = &start[win->_maxx];
+
+	    /*
+	     * If this is a derived window, we have to handle the case where
+	     * a multicolumn character extends into the window that we are
+	     * erasing.
+	     */
+	    if_WIDEC({
+		if (isWidecExt(start[0])) {
+		    int x = (win->_parent != 0) ? (win->_begx) : 0;
+		    while (x-- > 0) {
+			if (isWidecBase(start[-1])) {
+			    --start;
+			    break;
+			}
+			--start;
+		    }
+		}
+	    });
 
 	    for (sp = start; sp <= end; sp++)
 		*sp = blank;
