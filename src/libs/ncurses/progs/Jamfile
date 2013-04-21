@@ -1,0 +1,44 @@
+SubDir HAIKU_TOP src libs ncurses progs ;
+
+#SetSubDirSupportedPlatformsBeOSCompatible ;
+
+# filter warnings we don't want here
+#TARGET_WARNING_CCFLAGS = [ FFilter $(TARGET_WARNING_CCFLAGS)
+#	: -Wall -Wmissing-prototypes -Wsign-compare ] ;
+
+#SubDirCcFlags -DDEFPATH='\".:/share/awk\"' -DHAVE_CONFIG_H -DGAWK -DLOCALEDIR='\"/share/locale\"' ;
+SubDirCcFlags -O2 -DHAVE_CONFIG_H -D_XOPEN_SOURCE=500 -D_POSIX_C_SOURCE=199506L -DNDEBUG ;
+#CPPFLAGS	= -I../progs -I$(srcdir) -DHAVE_CONFIG_H -I. -I../include  -D_XOPEN_SOURCE=500 -D_POSIX_C_SOURCE=199506L -DNDEBUG -I$(includedir)
+
+SubDirSysHdrs $(SUBDIR) ;
+SubDirSysHdrs [ FDirName $(SUBDIR) $(DOTDOT) include ] ;
+
+#local gawk_rsrc = [ FGristFiles gawk.rsrc ] ;
+#ResComp $(gawk_rsrc) : [ FGristFiles gawk.rdef ] ;
+
+BinCommand <ncurses>tput :
+	tput.c
+	: libncurses.a : ;
+
+BinCommand <ncurses>infocmp :
+	dump_entry.c
+	infocmp.c
+	: libncurses.a : ;
+
+BinCommand <ncurses>tset :
+	tset.c
+	: libncurses.a : ;
+
+BinCommand <ncurses>clear :
+	clear.c
+	: libncurses.a : ;
+
+BinCommand <ncurses>toe :
+	toe.c
+	: libncurses.a : ;
+
+BinCommand <ncurses>tic :
+	dump_entry.c
+	tic.c
+	: libncurses.a : ;
+
