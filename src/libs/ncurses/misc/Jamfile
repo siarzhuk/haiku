@@ -1,0 +1,13 @@
+SubDir HAIKU_TOP src libs ncurses misc ;
+
+actions BuildTerminfo {
+	cat $(2[2-]) | sed -e "s%/usr/share/tabset%/boot/common/data/tabset%g" \
+		| $(2[1]) - $(1)
+}
+
+local terminfoDir = terminfo ;
+MakeLocateCommonPlatform $(terminfoDir) ;
+local terminfoSource = [ FGristFiles terminfo.src ] ;
+SEARCH on $(terminfoSource) = $(SUBDIR) ;
+Depends $(terminfoDir) : $(terminfoSource) <build>rtic ;
+BuildTerminfo $(terminfoDir) : <build>rtic $(terminfoSource) ;

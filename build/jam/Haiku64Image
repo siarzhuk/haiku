@@ -445,6 +445,13 @@ CopyDirectoryToHaikuImage system documentation
 	: [ FDirName $(HAIKU_TOP) docs apps diskusage ]
 	: diskusage : -x .svn ;
 
+# Copy terminfo database
+CopyDirectoryToHaikuImage common data
+	: [ FDirName $(HAIKU_TOP) src libs ncurses misc tabset ]
+	: tabset ;
+CopyDirectoryToHaikuImage common data
+	: [ FDirName $(HAIKU_OBJECT_DIR) common libs ncurses misc terminfo ]
+	: terminfo ;
 
 #pragma mark - Optional Packages
 
@@ -548,6 +555,7 @@ AddTargetVariableToScript $(script) : <build>create_image : createImage ;
 AddTargetVariableToScript $(script) : <build>makebootable ;
 AddTargetVariableToScript $(script) : <build>rc ;
 AddTargetVariableToScript $(script) : <build>resattr ;
+AddTargetVariableToScript $(script) : <build>rtic ;
 AddTargetVariableToScript $(script) : <build>unzip ;
 AddTargetVariableToScript $(script) : <build>vmdkimage ;
 AddVariableToScript $(script) : stripCommand : $(HAIKU_STRIP) ;

@@ -3632,7 +3632,11 @@ xterm-24|vs100|xterms|xterm terminal emulator (X Window System),
 	lines#24, use=xterm-old,
 
 # This is xterm for ncurses.
+# Haiku Terminal note: That entry was modified to declare support of
+# 256 colors but left with 'xterm' name to keep compatibility until
+# xterm-256color become more popular
 xterm|xterm terminal emulator (X Window System),
+	colors#256, pairs#32767,
 	use=xterm-new,
 
 # This entry assumes that xterm's handling of VT100 SI/SO is disabled by

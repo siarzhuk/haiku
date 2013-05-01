@@ -14,6 +14,8 @@ SEARCH_SOURCE += [ FDirName $(SUBDIR) widechar ] ;
 #local defines = [ FDefines TRACE=1 ] ;
 #SubDirCcFlags $(defines) ;
 
+Depends libncurses.a : terminfo ;
+
 StaticLibrary libncurses.a :
 	# main
 	codes.c
