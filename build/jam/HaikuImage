@@ -152,7 +152,8 @@ SYSTEM_ADD_ONS_SCREENSAVERS = [ FFilterByBuildFeatures
 	GLife@x86 $(HAIKU_INCLUDE_TRADEMARKS)Haiku Icons IFS Leaves
 	Message Spider Gravity@x86
 ] ;
-SYSTEM_ADD_ONS_DRIVERS_AUDIO = auich auvia echo3g emuxki hda ice1712 sis7018 ;
+#SYSTEM_ADD_ONS_DRIVERS_AUDIO = auich auvia echo3g emuxki hda ice1712 sis7018 ;
+SYSTEM_ADD_ONS_DRIVERS_AUDIO = auich auvia echo3g emuxki usb_audio ice1712 sis7018 ;
 SYSTEM_ADD_ONS_DRIVERS_AUDIO_OLD = ; #cmedia usb_audio ;
 SYSTEM_ADD_ONS_DRIVERS_GRAPHICS = [ FFilterByBuildFeatures
 	x86,x86_64 @{
@@ -231,7 +232,8 @@ AddFilesToHaikuImage system add-ons kernel busses random
 AddFilesToHaikuImage system add-ons kernel busses scsi
 	: ahci virtio_scsi ;
 AddFilesToHaikuImage system add-ons kernel busses usb
-	: <usb>uhci <usb>ohci <usb>ehci ;
+	: <usb>uhci <usb>ohci ;
+#	: <usb>uhci <usb>ohci <usb>ehci ;
 AddFilesToHaikuImage system add-ons kernel busses virtio
 	: virtio_pci ;
 AddFilesToHaikuImage system add-ons kernel console : vga_text ;
@@ -611,7 +613,8 @@ AddBootModuleSymlinksToHaikuImage
 	ata_adapter@ata ide_adapter@ide locked_pool scsi_periph
 	ahci generic_ide_pci it8211 legacy_sata silicon_image_3112
 	ide_isa@x86
-	<usb>uhci <usb>ohci <usb>ehci
+#	<usb>uhci <usb>ohci <usb>ehci
+	<usb>uhci <usb>ohci 
 	scsi_cd scsi_disk usb_disk
 	virtio virtio_pci virtio_block virtio_scsi
 	efi_gpt
