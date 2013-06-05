@@ -400,7 +400,7 @@ typedef struct {
 	size_t		buffer_size;				// Size of the buffer
 	void		*buffer_logical;			// Logical pointer to the buffer
 	void		*next_logical_descriptor;	// Logical pointer next descriptor
-//	void		*next_done_descriptor;		// Used for collision in the hash table
+	void		*next_done_descriptor;		// Used for collision in the hash table
 } ohci_isochronous_td;
 
 #define	OHCI_ITD_GET_STARTING_FRAME(x)			((x) & 0x0000ffff)

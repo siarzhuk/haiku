@@ -1199,11 +1199,11 @@ OHCI::_FinishIsochronousTransfer(
 	size_t actualLength = 0;
 	usb_isochronous_data *isochronousData = transfer->transfer->IsochronousData();
 	uint32 packet = 0;
-
+#if 0
 	TRACE("Bandwidth map count of finish start:%ld\n", fBandwidthMap.Count());
 
 	_PrintDescriptorChain(descriptor);
-	
+#endif
 	while (descriptor && !transfer->canceled) {
 		uint32 status = OHCI_TD_GET_CONDITION_CODE(descriptor->flags);
 		if (status == OHCI_TD_CONDITION_NOT_ACCESSED) {
@@ -1261,7 +1261,7 @@ OHCI::_FinishIsochronousTransfer(
 		}
 
 		descriptor
-			= (ohci_isochronous_td *)descriptor->next_logical_descriptor;
+			= (ohci_isochronous_td *)descriptor->next_done_descriptor;
 	}
 
 	if (transfer->canceled) {
@@ -1325,12 +1325,13 @@ OHCI::_FinishIsochronousTransfer(
 	}
 
 	_FreeDescriptorChain((ohci_isochronous_td*)transfer->first_descriptor);
-
+#if 0
 	TRACE("Bandwidth map count on finish end:%ld\n", fBandwidthMap.Count());
 	BandwidthMap::Iterator i = fBandwidthMap.Begin();
 	for ( ; i != fBandwidthMap.End(); i++) {
 		TRACE("%d\n", i->Key());
 	}
+#endif
 	return true;
 }
 
@@ -1499,7 +1500,8 @@ OHCI::_SubmitIsochronousTransfer(Transfer *transfer)
 	// Set the last descriptor to generate an interrupt
 	lastDescriptor->flags &= ~OHCI_ITD_INTERRUPT_MASK;
 	lastDescriptor->flags |=
-		OHCI_ITD_SET_DELAY_INTERRUPT(OHCI_ITD_INTERRUPT_IMMEDIATE);
+		//OHCI_ITD_SET_DELAY_INTERRUPT(OHCI_ITD_INTERRUPT_IMMEDIATE);
+		OHCI_ITD_SET_DELAY_INTERRUPT(1); // let the controller retire ITD?
 
 	// If direction is out set every descriptor data
 	if (pipe->Direction() == Pipe::Out) {
@@ -1534,6 +1536,7 @@ OHCI::_SubmitIsochronousTransfer(Transfer *transfer)
 
 	return B_OK;
 }
+
 
 status_t
 OHCI::_CreateDescriptorChain(ohci_isochronous_td **_firstDescriptor,
@@ -1636,7 +1639,7 @@ OHCI::_CreateDescriptorChain(ohci_isochronous_td **_firstDescriptor,
 		// TODO incomplete implementation!
 		// link to previous
 		if (lastDescriptor)
-			_LinkDescriptors(lastDescriptor, descriptor);
+			_LinkDescriptors(lastDescriptor, descriptor, descriptor);
 
 		lastDescriptor = descriptor;
 		if (!firstDescriptor)
@@ -1714,8 +1717,9 @@ OHCI::_SwitchEndpointTail(ohci_endpoint_descriptor *endpoint,
 	tail->buffer_size = first->buffer_size;
 	tail->buffer_logical = first->buffer_logical;
 	tail->next_logical_descriptor = first->next_logical_descriptor;
+	tail->next_done_descriptor = first->next_done_descriptor;
 	// TODO what else for isochronous???
-
+	
 	// the first descriptor becomes the new tail
 	first->flags = 0;
 	first->buffer_page_byte_0 = 0;
@@ -1724,6 +1728,7 @@ OHCI::_SwitchEndpointTail(ohci_endpoint_descriptor *endpoint,
 	first->buffer_size = 0;
 	first->buffer_logical = NULL;
 	first->next_logical_descriptor = NULL;
+	first->next_done_descriptor = NULL;
 
 	for (int i = 0; i < OHCI_ITD_NOFFSET; i++) {
 		tail->offset[i] = first->offset[i];
@@ -1731,16 +1736,16 @@ OHCI::_SwitchEndpointTail(ohci_endpoint_descriptor *endpoint,
 	}
 
 	if (first == last)
-		_LinkDescriptors(tail, first);
+		_LinkDescriptors(tail, first, NULL);
 	else
-		_LinkDescriptors(last, first);
+		_LinkDescriptors(last, first, NULL);
 
 	// update the endpoint tail pointer to reflect the change
 	endpoint->tail_logical_descriptor = first;
 	endpoint->tail_physical_descriptor = (uint32)first->physical_address;
 	TRACE("switched tail from %p to %p\n", tail, first);
 
-#if 1
+#if 0
 	_PrintEndpoint(endpoint);
 	_PrintDescriptorChain(tail);
 #endif
@@ -2095,7 +2100,8 @@ OHCI::_FreeDescriptorChain(ohci_isochronous_td *topDescriptor)
 	ohci_isochronous_td *next = NULL;
 
 	while (current) {
-		next = (ohci_isochronous_td *)current->next_logical_descriptor;
+		//next = (ohci_isochronous_td *)current->next_logical_descriptor;
+		next = (ohci_isochronous_td *)current->next_done_descriptor;
 		_FreeDescriptor(current);
 		current = next;
 	}
@@ -2167,6 +2173,12 @@ OHCI::_WriteDescriptorChain(ohci_isochronous_td *topDescriptor, iovec *vector,
 	size_t vectorOffset = 0;
 	size_t bufferOffset = 0;
 
+	static int16 sin[24] = { 0, 4277, 8481, 12540, 16384, 19948, 23170, 25996,
+	   	28378, 30273, 31651, 32487, 32767, 32487, 31651, 30273, 28378, 25996,
+	   	23170, 19948, 16384, 12540, 8481, 4277 };
+	static uint16 sample = 0;
+	static bool sign = true;
+
 	while (current) {
 		if (!current->buffer_logical)
 			break;
@@ -2180,6 +2192,16 @@ OHCI::_WriteDescriptorChain(ohci_isochronous_td *topDescriptor, iovec *vector,
 				vectorOffset, vectorIndex, vectorCount);
 			memcpy((uint8 *)current->buffer_logical + bufferOffset,
 				(uint8 *)vector[vectorIndex].iov_base + vectorOffset, length);
+			
+			uint16* b = (uint16*)((uint8*)current->buffer_logical + bufferOffset);
+			for (size_t u = 0; u < length / 2; u += 2) {
+				b[u] = b[u + 1] = sign ? sin[sample] : -sin[sample];
+				sample ++;
+				if (sample == 24) {
+					sample = 0;
+					sign = !sign;
+				}
+			}
 
 			actualLength += length;
 			vectorOffset += length;
@@ -2362,10 +2384,12 @@ OHCI::_LinkDescriptors(ohci_general_td *first, ohci_general_td *second)
 
 
 void
-OHCI::_LinkDescriptors(ohci_isochronous_td *first, ohci_isochronous_td *second)
+OHCI::_LinkDescriptors(ohci_isochronous_td *first, ohci_isochronous_td *second,
+		ohci_isochronous_td *nextDone)
 {
 	first->next_physical_descriptor = second->physical_address;
 	first->next_logical_descriptor = second;
+	first->next_done_descriptor = nextDone;
 }
 
 
@@ -2384,6 +2408,7 @@ OHCI::_CreateIsochronousDescriptor(size_t bufferSize)
 	descriptor->physical_address = (uint32)physicalAddress;
 	descriptor->next_physical_descriptor = 0;
 	descriptor->next_logical_descriptor = NULL;
+	descriptor->next_done_descriptor = NULL;
 	descriptor->buffer_size = bufferSize;
 	if (bufferSize == 0) {  //TODO no sence?
 		descriptor->buffer_page_byte_0 = 0;
@@ -2648,9 +2673,9 @@ OHCI::_PrintDescriptorChain(ohci_isochronous_td *topDescriptor)
 		dprintf("\tbuffer_size..... %lu\n", topDescriptor->buffer_size);
 		dprintf("\tbuffer_logical.. %p\n", topDescriptor->buffer_logical);
 		dprintf("\tnext_logical.... %p\n", topDescriptor->next_logical_descriptor);
-//		dprintf("\tnext_done....... %p\n", topDescriptor->next_done_descriptor);
+		dprintf("\tnext_done....... %p\n", topDescriptor->next_done_descriptor);
 
-		topDescriptor = (ohci_isochronous_td *)topDescriptor->next_logical_descriptor;
+		topDescriptor = (ohci_isochronous_td *)topDescriptor->next_done_descriptor;
 	}
 }
 

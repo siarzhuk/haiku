@@ -155,7 +155,8 @@ static	int32						_FinishThread(void *data);
 										ohci_general_td *second);
 
 		void						_LinkDescriptors(ohci_isochronous_td *first,
-										ohci_isochronous_td *second);
+										ohci_isochronous_td *second,
+										ohci_isochronous_td *nextDone);
 
 		ohci_isochronous_td *		_CreateIsochronousDescriptor(
 										size_t bufferSize);
