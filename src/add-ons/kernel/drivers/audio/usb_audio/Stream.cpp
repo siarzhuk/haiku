@@ -26,6 +26,7 @@ Stream::Stream(Device *device, size_t interface, usb_interface_list *List
 			fCurrentBuffer(0),
 			fStartingFrame(0),
 			fSamplesCount(0),
+			fPacketSize(0),
 			fProcessedBuffers(0)/*,
 			fBuffersPhysAddress(0)/ *,
 			fRealTime(0),
@@ -124,10 +125,13 @@ Stream::Init()
 	bufferSize *= kSamplesBufferSize;
 	TRACE("bufferSize:%d\n", bufferSize);
 
-	bufferSize *= (sizeof(usb_iso_packet_descriptor) + endpoint->fMaxPacketSize); 
+	// TODO: 48 samples for usb 1 - test case!
+	fPacketSize	= 192;
+
+	bufferSize *= (sizeof(usb_iso_packet_descriptor) + fPacketSize); 
 	TRACE("bufferSize:%d\n", bufferSize);
 
-	bufferSize /= endpoint->fMaxPacketSize;
+	bufferSize /= fPacketSize;
 	TRACE("bufferSize:%d\n", bufferSize);
 
 	bufferSize = (bufferSize + (B_PAGE_SIZE - 1)) &~ (B_PAGE_SIZE - 1);
@@ -154,19 +158,19 @@ Stream::Init()
 
 	fDescriptorsCount = bufferSize;
 	fDescriptorsCount /= (sizeof(usb_iso_packet_descriptor)
-												+ endpoint->fMaxPacketSize);
+												+ fPacketSize);
 	fDescriptorsCount /= kSamplesBufferCount;
 	// we need same size buffers. round it!
 	fDescriptorsCount *= kSamplesBufferCount;
 
-	fSamplesCount = fDescriptorsCount * endpoint->fMaxPacketSize;
+	fSamplesCount = fDescriptorsCount * fPacketSize;
 	TRACE("samplesCount:%d\n", fSamplesCount);
 
 	fSamplesCount /= format->fNumChannels * format->fSubframeSize;
 	TRACE("samplesCount:%d\n", fSamplesCount);
 
 	for (size_t i = 0; i < fDescriptorsCount; i++) {
-		fDescriptors[i].request_length = endpoint->fMaxPacketSize;
+		fDescriptors[i].request_length = fPacketSize;
 		fDescriptors[i].actual_length = 0;
 		fDescriptors[i].status = B_OK;
 	}
@@ -199,14 +203,32 @@ Stream::OnSetConfiguration(usb_device device,
 		return B_ERROR;
 	}
 
-	/*status_t status =*/ gUSBModule->set_alt_interface(device, interface);
+	status_t status = gUSBModule->set_alt_interface(device, interface);
 	uint8 address = fAlternates[fActiveAlternate]->Endpoint()->fEndpointAddress;
+
+	TRACE_ALWAYS("set_alt_interface	%x\n", status);
 
 	for (size_t i = 0; i < interface->endpoint_count; i++) {
 		if (address == interface->endpoint[i].descr->endpoint_address) {
 			fStreamEndpoint = interface->endpoint[i].handle;
 			TRACE("%s Stream Endpoint [address %#04x] handle is: %#010x.\n",
 					fIsInput ? "Input" : "Output", address, fStreamEndpoint);
+			
+			size_t actualLength = 0;
+			uint32 speed = 48000;
+			uint8 data[3] = {
+				0xFF & speed,
+				0xFF & speed >> 8,
+				0xFF & speed >> 16 };
+	
+			status_t status = gUSBModule->send_request(device,
+					USB_REQTYPE_CLASS | USB_REQTYPE_ENDPOINT_OUT,
+					UAS_SET_CUR, UAS_SAMPLING_FREQ_CONTROL << 8,
+					address, 3, data, &actualLength);
+			
+			TRACE_ALWAYS("set_speed for ep %#x %d: %x\n",
+					address, actualLength, status);
+			
 			return B_OK;
 		}
 	}
@@ -269,9 +291,10 @@ Stream::_QueueNextTransfer(size_t queuedBuffer)
 	return gUSBModule->queue_isochronous(fStreamEndpoint,
 			buffers + bufferSize * queuedBuffer, bufferSize,
 			fDescriptors + queuedBuffer * packetsCount, packetsCount,
-			NULL/*&fStartingFrame*/, USB_ISO_ASAP,
+			&fStartingFrame, USB_ISO_ASAP,
 			Stream::_TransferCallback, this);
 
+	TRACE("frame:%#010x\n", fStartingFrame);
 //	return B_OK;
 }
 
@@ -290,7 +313,11 @@ Stream::_TransferCallback(void *cookie, int32 status, void *data,
 //	stream->_DumpDescriptors();
 
 	stream->_DumpDescriptors();
-	
+
+//	static size_t CCC = 0;
+
+//	if (CCC++ < 10) {
+
 	status_t result = stream->_QueueNextTransfer(stream->fCurrentBuffer);
 
 	if (atomic_add(&stream->fProcessedBuffers, 1) > (int32)kSamplesBufferCount) {
@@ -301,7 +328,8 @@ Stream::_TransferCallback(void *cookie, int32 status, void *data,
 
 	// TRACE_ALWAYS("st:%#010x, len:%d -> %#010x\n", status, actualLength, result);
 	TRACE_ALWAYS("st:%#010x, data:%#010x, len:%d\n", status, data, actualLength);
-
+	
+//	}
 /*	if (status != B_OK) {
 		TRACE_ALWAYS("Device status error:%#010x\n", status);
 		status_t result = gUSBModule->clear_feature(device->fControLeNDPOint,
@@ -448,7 +476,7 @@ Stream::GetBuffers(multi_buffer_list* List)
 			Buffers[buffer][channel].base
 									= (char*)(fDescriptors + fDescriptorsCount);
 			// shift for whole buffer if required
-			size_t bufferSize = endpoint->fMaxPacketSize
+			size_t bufferSize = fPacketSize/*endpoint->fMaxPacketSize*/
 									* (fDescriptorsCount / kSamplesBufferCount);
 			Buffers[buffer][channel].base += buffer * bufferSize;
 			// shift for channel if required

@@ -679,9 +679,9 @@ Device::_SetupEndpoints()
 					if (B_OK == stream->Init()) {
 						// put the stream in the correct order:
 						// first output that input ones.
-						if (stream->IsInput()) {
+				/* TODO		if (stream->IsInput()) {
 							fStreams.PushBack(stream);
-						} else {
+						} else*/ {
 							fStreams.PushFront(stream);
 						}
 					} else {

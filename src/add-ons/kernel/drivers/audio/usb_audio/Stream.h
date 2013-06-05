@@ -69,6 +69,7 @@ protected:
 		size_t				fCurrentBuffer;
 		uint32				fStartingFrame;
 		size_t				fSamplesCount;
+		size_t				fPacketSize;
 		int32				fProcessedBuffers;
 //		void*				fBuffersPhysAddress;
 /*		bigtime_t			fRealTime;
