@@ -153,7 +153,7 @@ Stream::Init()
 	get_memory_map(fDescriptors, bufferSize, &PhysEntry, 1);
 
 	TRACE_ALWAYS("Created area id: "
-			"%d\naddress:%#010x[phys:%#010x]\nsize:%#010x\n",
+			"%d\naddress:%#010x[phys:%#010x]\nsize:%#010lx\n",
 			fArea, fDescriptors, PhysEntry.address, bufferSize);
 
 	fDescriptorsCount = bufferSize;
@@ -287,15 +287,35 @@ Stream::_QueueNextTransfer(size_t queuedBuffer)
 	TRACE("buffers:%#010x[%#x]\ndescrs:%#010x[%#x]\n",
 			buffers + bufferSize * queuedBuffer, bufferSize,
 			fDescriptors + queuedBuffer * packetsCount, packetsCount);
+#if 0
+{	
+	static int16 sin[24] = { 0, 4277, 8481, 12540, 16384, 19948, 23170, 25996,
+	   	28378, 30273, 31651, 32487, 32767, 32487, 31651, 30273, 28378, 25996,
+	   	23170, 19948, 16384, 12540, 8481, 4277 };
+	static uint16 sample = 0;
+	static bool sign = true;
+			
+			uint16* b = (uint16*)(buffers + bufferSize * queuedBuffer);
+			size_t length = bufferSize;
+			for (size_t u = 0; u < length / 2; u += 2) {
+				b[u] = b[u + 1] = sign ? sin[sample] : -sin[sample];
+				sample ++;
+				if (sample == 24) {
+					sample = 0;
+					sign = !sign;
+				}
+			}
+}
+#endif
 
-	return gUSBModule->queue_isochronous(fStreamEndpoint,
+	status_t status = gUSBModule->queue_isochronous(fStreamEndpoint,
 			buffers + bufferSize * queuedBuffer, bufferSize,
 			fDescriptors + queuedBuffer * packetsCount, packetsCount,
 			&fStartingFrame, USB_ISO_ASAP,
 			Stream::_TransferCallback, this);
 
 	TRACE("frame:%#010x\n", fStartingFrame);
-//	return B_OK;
+	return status; // B_OK;
 }
 
 
@@ -304,11 +324,13 @@ Stream::_TransferCallback(void *cookie, int32 status, void *data,
 	uint32 actualLength)
 {
 	Stream *stream = (Stream *)cookie;
-
+/*
 	stream->fCurrentBuffer++;
 	if (stream->fCurrentBuffer >= kSamplesBufferCount) {
 		stream->fCurrentBuffer = 0;
 	} // TODO use modulo operation? ;)
+*/
+	stream->fCurrentBuffer = (stream->fCurrentBuffer + 1) % kSamplesBufferCount;
 
 //	stream->_DumpDescriptors();
 
@@ -536,8 +558,8 @@ Stream::ExchangeBuffer(multi_buffer_info* Info)
 	Info->played_frames_count += fSamplesCount / kSamplesBufferCount;
 	Info->playback_buffer_cycle = fCurrentBuffer;
 
-	fCurrentBuffer++;
-	fCurrentBuffer %= kSamplesBufferCount;
+//	fCurrentBuffer++;
+//	fCurrentBuffer %= kSamplesBufferCount;
 
 	atomic_add(&fProcessedBuffers, -1);
 
