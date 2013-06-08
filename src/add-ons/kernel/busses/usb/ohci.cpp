@@ -16,7 +16,6 @@
 #include <KernelExport.h>
 #include <util/AutoLock.h>
 
-// TODO: check repeatable endless OUT dataflow
 // TODO: check repeatable simultaneous IN and OUT data flow
 // TODO: check cancel functionality 
 // TODO: 64 bits compatibility
@@ -1505,8 +1504,27 @@ OHCI::_SubmitIsochronousTransfer(Transfer *transfer)
 
 	// If direction is out set every descriptor data
 	if (pipe->Direction() == Pipe::Out) {
+	/*
+	static int16 sin[24] = { 0, 4277, 8481, 12540, 16384, 19948, 23170, 25996,
+	   	28378, 30273, 31651, 32487, 32767, 32487, 31651, 30273, 28378, 25996,
+	   	23170, 19948, 16384, 12540, 8481, 4277 };
+	static uint16 sample = 0;
+	static bool sign = true;
+			
+			uint16* b = (uint16*)((uint8*)transfer->Vector);
+			for (size_t u = 0; u < length / 2; u += 2) {
+				b[u] = b[u + 1] = sign ? sin[sample] : -sin[sample];
+				sample ++;
+				if (sample == 24) {
+					sample = 0;
+					sign = !sign;
+				}
+			}
+*/
+
 		_WriteDescriptorChain(firstDescriptor, transfer->Vector(),
 			transfer->VectorCount());
+
 	} else {
 		// Initialize the packet descriptors
 		for (uint32 i = 0; i < isochronousData->packet_count; i++) {
@@ -2173,12 +2191,6 @@ OHCI::_WriteDescriptorChain(ohci_isochronous_td *topDescriptor, iovec *vector,
 	size_t vectorOffset = 0;
 	size_t bufferOffset = 0;
 
-	static int16 sin[24] = { 0, 4277, 8481, 12540, 16384, 19948, 23170, 25996,
-	   	28378, 30273, 31651, 32487, 32767, 32487, 31651, 30273, 28378, 25996,
-	   	23170, 19948, 16384, 12540, 8481, 4277 };
-	static uint16 sample = 0;
-	static bool sign = true;
-
 	while (current) {
 		if (!current->buffer_logical)
 			break;
@@ -2193,16 +2205,6 @@ OHCI::_WriteDescriptorChain(ohci_isochronous_td *topDescriptor, iovec *vector,
 			memcpy((uint8 *)current->buffer_logical + bufferOffset,
 				(uint8 *)vector[vectorIndex].iov_base + vectorOffset, length);
 			
-			uint16* b = (uint16*)((uint8*)current->buffer_logical + bufferOffset);
-			for (size_t u = 0; u < length / 2; u += 2) {
-				b[u] = b[u + 1] = sign ? sin[sample] : -sin[sample];
-				sample ++;
-				if (sample == 24) {
-					sample = 0;
-					sign = !sign;
-				}
-			}
-
 			actualLength += length;
 			vectorOffset += length;
 			bufferOffset += length;
