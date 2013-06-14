@@ -516,6 +516,9 @@ OHCI::CancelQueuedTransfers(Pipe *pipe, bool force)
 		list = next;
 	}
 
+	if (pipe->Type() & USB_OBJECT_ISO_PIPE)
+		_ReleaseBandwidth(pipe);
+
 	// wait for any transfers that might have made it before canceling
 	while (fProcessingPipe == pipe)
 		snooze(1000);
@@ -1264,8 +1267,8 @@ OHCI::_FinishIsochronousTransfer(
 
 		uint16 frame = OHCI_ITD_GET_STARTING_FRAME(descriptor->flags);
 		Pipe *pipe = transfer->transfer->TransferPipe();
-		_ReleaseBandwidth(frame, OHCI_ITD_GET_FRAME_COUNT(descriptor->flags),
-				pipe->DeviceAddress(), pipe->EndpointAddress());
+		_ReleaseBandwidth(frame,
+			OHCI_ITD_GET_FRAME_COUNT(descriptor->flags), pipe);
 //} else
 //	TRACE_ALWAYS("###passaway transfer %p results %d\n", transfer, transfer->canceled);	
 // TODO underrun or overrun???
@@ -1634,7 +1637,7 @@ OHCI::_CreateDescriptorChain(ohci_isochronous_td **_firstDescriptor,
 		uint16 frameCount = 0;
 		while (frameCount < min_c(OHCI_ITD_NOFFSET, packets)
 				&& _AllocateBandwidth(frameOffset + currentFrame + frameCount,
-					pipe->DeviceAddress(), pipe->EndpointAddress(), bandwidth))
+					pipe, bandwidth))
 			frameCount++;
 		
 		if (frameCount == 0) {
@@ -1648,8 +1651,7 @@ OHCI::_CreateDescriptorChain(ohci_isochronous_td **_firstDescriptor,
 
 		if (!descriptor) {
 			TRACE_ERROR("failed to allocate iso TD\n");
-			_ReleaseBandwidth(currentFrame + frameOffset, frameCount,
-							pipe->DeviceAddress(), pipe->EndpointAddress());
+			_ReleaseBandwidth(currentFrame + frameOffset, frameCount, pipe);
 			_FreeDescriptorChain(firstDescriptor);
 			return B_NO_MEMORY;
 		}
@@ -2472,9 +2474,11 @@ OHCI::_FreeDescriptor(ohci_isochronous_td *descriptor)
 
 
 bool
-OHCI::_AllocateBandwidth(uint16 frame,
-		uint8 address, uint8 endpoint, uint16 size)
+OHCI::_AllocateBandwidth(uint16 frame, Pipe *pipe, uint16 size)
 {
+	uint8 address = pipe->DeviceAddress();
+	uint8 endpoint = pipe->EndpointAddress();
+
 	bandwidth_data* head = NULL;
 	uint16 bandwidth = MAX_AVAILABLE_BANDWIDTH;
 	BandwidthMap::Iterator i = fBandwidthMap.Find(frame);
@@ -2512,8 +2516,11 @@ OHCI::_AllocateBandwidth(uint16 frame,
 
 void
 OHCI::_ReleaseBandwidth(
-		uint16 startFrame, uint16 frameCount, uint8 address, uint8 endpoint)
+		uint16 startFrame, uint16 frameCount, Pipe *pipe)
 {
+	uint8 address = pipe->DeviceAddress();
+	uint8 endpoint = pipe->EndpointAddress();
+
 	for (size_t index = 0; index < frameCount; index++) {
 		uint16 frame = startFrame + index;
 		BandwidthMap::Iterator i = fBandwidthMap.Find(frame);
@@ -2524,7 +2531,7 @@ OHCI::_ReleaseBandwidth(
 		bandwidth_data* data = i->Value();
 		if (data == NULL) {
 			fBandwidthMap.Remove(frame);
-			return;
+			return; // TODO: continue to next frame????
 		}
 
 		bandwidth_data* prev = NULL;
@@ -2533,7 +2540,7 @@ OHCI::_ReleaseBandwidth(
 				break;
 		
 		if (data == NULL)
-			return;
+			return; // TODO: continue to next frame????
 
 		if (prev == NULL) {
 			if (data->link == NULL)
@@ -2544,6 +2551,52 @@ OHCI::_ReleaseBandwidth(
 			prev->link = data->link;
 
 		delete data;
+	}
+}
+
+
+void
+OHCI::_ReleaseBandwidth(Pipe *pipe)
+{
+	uint8 address = pipe->DeviceAddress();
+	uint8 endpoint = pipe->EndpointAddress();
+
+	for (BandwidthMap::Iterator i = fBandwidthMap.Begin();
+		i != fBandwidthMap.End(); i++) {
+
+		uint16 frame = i->Key();
+		bandwidth_data* data = i->Value();
+
+		if (data == NULL)
+			continue;
+
+		bandwidth_data* prev = NULL;
+		for ( ; data; prev = data, data = data->link)
+			if (data->address == address && data->endpoint == endpoint)
+				break;
+		
+		if (data == NULL)
+			continue;
+
+		if (prev == NULL)
+			fBandwidthMap.Insert(frame, data->link);
+		else
+			prev->link = data->link;
+
+		delete data;
+	}
+
+	// purge entries with no bandwidth
+	BandwidthMap::Iterator i = fBandwidthMap.Begin();
+	while (i != fBandwidthMap.End()) {
+		uint16 frame = i->Key();
+		bandwidth_data* data = i->Value();
+
+		if (data == NULL) {
+			fBandwidthMap.Remove(frame);
+			i = fBandwidthMap.Begin();
+		} else
+			i++;
 	}
 }
 

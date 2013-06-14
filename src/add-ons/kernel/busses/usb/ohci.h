@@ -172,10 +172,11 @@ static	int32						_FinishThread(void *data);
 		size_t						_WriteDescriptorChain(
 										ohci_isochronous_td *topDescriptor,
 										iovec *vector, size_t vectorCount);
-		bool						_AllocateBandwidth(uint16 frame, uint8 address,
-										uint8 endpoint, uint16 size);
+		bool						_AllocateBandwidth(uint16 frame, Pipe *pipe,
+										uint16 size);
 		void						_ReleaseBandwidth(uint16 startFrame, uint16 count,
-										uint8 address, uint8 endpoint);
+										Pipe *pipe);
+		void						_ReleaseBandwidth(Pipe *pipe);
 		void						_ReleaseBandwidthMap();
 		// Private locking
 		bool						_LockEndpoints();
