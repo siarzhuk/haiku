@@ -448,6 +448,7 @@ OHCI::SubmitTransfer(Transfer *transfer)
 	return B_ERROR;
 }
 
+	static bool cancel = false;
 
 status_t
 OHCI::CancelQueuedTransfers(Pipe *pipe, bool force)
@@ -458,6 +459,9 @@ OHCI::CancelQueuedTransfers(Pipe *pipe, bool force)
 		return _CancelQueuedIsochronousTransfers(pipe, force);
 #endif
 
+	if (pipe->Type() & USB_OBJECT_ISO_PIPE)
+		cancel = true;
+	
 	if (!Lock())
 		return B_ERROR;
 
@@ -496,6 +500,8 @@ OHCI::CancelQueuedTransfers(Pipe *pipe, bool force)
 				}
 			}
 			current->canceled = true;
+
+			TRACE_ALWAYS("#### Cancelling:%p\n", current);
 		}
 		current = current->link;
 	}
@@ -1190,20 +1196,26 @@ OHCI::_FinishIsochronousTransfer(
 		transfer_data *transfer, transfer_data **_lastTransfer)
 {
 	bool transferDone = false;
-	Pipe *pipe = transfer->transfer->TransferPipe();
-	bool directionOut = (pipe->Direction() == Pipe::Out);
+	//Pipe *pipe = transfer->transfer->TransferPipe();
+	//bool directionOut = (pipe->Direction() == Pipe::Out);
+	bool directionOut = !transfer->incoming;
 	ohci_isochronous_td *descriptor
 		= (ohci_isochronous_td *)transfer->first_descriptor;
 	status_t callbackStatus = B_OK;
 	size_t actualLength = 0;
-	usb_isochronous_data *isochronousData = transfer->transfer->IsochronousData();
+	//usb_isochronous_data *isochronousData	= transfer->transfer->IsochronousData();
 	uint32 packet = 0;
 #if 0
 	TRACE("Bandwidth map count of finish start:%ld\n", fBandwidthMap.Count());
 
 	_PrintDescriptorChain(descriptor);
 #endif
+	if (cancel)
+		TRACE_ALWAYS("### Finishing:%p %d\n", transfer, transfer->canceled);
+
 	while (descriptor && !transfer->canceled) {
+		usb_isochronous_data *isochronousData
+			= transfer->transfer->IsochronousData();
 		uint32 status = OHCI_TD_GET_CONDITION_CODE(descriptor->flags);
 		if (status == OHCI_TD_CONDITION_NOT_ACCESSED) {
 			// td is still active
@@ -1222,8 +1234,15 @@ OHCI::_FinishIsochronousTransfer(
 				callbackStatus = _GetStatusOfConditionCode(status);
 		}
 
+//if (!cancel) {		
 		uint32 frameCount = OHCI_ITD_GET_FRAME_COUNT(descriptor->flags);
 		for (size_t i = 0; i < frameCount; i++, packet++) {
+			if (isochronousData->packet_count < packet) {
+				TRACE_ALWAYS("packet count %ld of %ld mismatch\r",
+					packet, isochronousData->packet_count);
+				break; // TODO: fix crash on media-server restart
+			}
+
 			usb_iso_packet_descriptor* packet_descriptor
 				= &isochronousData->packet_descriptors[packet];
 
@@ -1244,9 +1263,11 @@ OHCI::_FinishIsochronousTransfer(
 		}
 
 		uint16 frame = OHCI_ITD_GET_STARTING_FRAME(descriptor->flags);
+		Pipe *pipe = transfer->transfer->TransferPipe();
 		_ReleaseBandwidth(frame, OHCI_ITD_GET_FRAME_COUNT(descriptor->flags),
 				pipe->DeviceAddress(), pipe->EndpointAddress());
-
+//} else
+//	TRACE_ALWAYS("###passaway transfer %p results %d\n", transfer, transfer->canceled);	
 // TODO underrun or overrun???
 
 		// the td has completed
@@ -1269,7 +1290,7 @@ OHCI::_FinishIsochronousTransfer(
 		// which causes all of the tds to become "free" (as they are
 		// inaccessible and not accessed anymore (as setting the head
 		// pointer required disabling the endpoint))
-		//callbackStatus = B_OK;
+		callbackStatus = B_CANCELED;
 		transferDone = true;
 	}
 
