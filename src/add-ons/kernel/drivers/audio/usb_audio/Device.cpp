@@ -23,9 +23,9 @@ Device::Device(usb_device device)
 			fDevice(device),
 			fNonBlocking(false),
 			fAudioControl(this),
-			fControlEndpoint(0),
-			fInStreamEndpoint(0),
-			fOutStreamEndpoint(0),
+		//	fControlEndpoint(0),
+		//	fInStreamEndpoint(0),
+		//	fOutStreamEndpoint(0),
 			fNotifyReadSem(-1),
 			fNotifyWriteSem(-1),
 			fNotifyBuffer(NULL),
@@ -42,6 +42,7 @@ Device::Device(usb_device device)
 
 	fVendorID = deviceDescriptor->vendor_id;
 	fProductID = deviceDescriptor->product_id;
+	fUSBVersion = deviceDescriptor->usb_version;
 
 	fNotifyReadSem = create_sem(0, DRIVER_NAME"_notify_read");
 	if (fNotifyReadSem < B_OK) {
@@ -155,9 +156,9 @@ Device::Close()
 	// wait until possible notification handling finished...
 	while (atomic_add(&fInsideNotify, 0) != 0)
 		snooze(100);
-	gUSBModule->cancel_queued_transfers(fControlEndpoint);
-	gUSBModule->cancel_queued_transfers(fInStreamEndpoint);
-	gUSBModule->cancel_queued_transfers(fOutStreamEndpoint);
+//	gUSBModule->cancel_queued_transfers(fControlEndpoint);
+//	gUSBModule->cancel_queued_transfers(fInStreamEndpoint);
+//	gUSBModule->cancel_queued_transfers(fOutStreamEndpoint);
 
 	fOpen = false;
 
@@ -289,9 +290,9 @@ Device::Removed()
 	while (atomic_add(&fInsideNotify, 0) != 0)
 		snooze(100);
 
-	gUSBModule->cancel_queued_transfers(fControlEndpoint);
-	gUSBModule->cancel_queued_transfers(fInStreamEndpoint);
-	gUSBModule->cancel_queued_transfers(fOutStreamEndpoint);
+//	gUSBModule->cancel_queued_transfers(fControlEndpoint);
+//	gUSBModule->cancel_queued_transfers(fInStreamEndpoint);
+//	gUSBModule->cancel_queued_transfers(fOutStreamEndpoint);
 /*
 	if (fLinkStateChangeSem >= B_OK)
 		release_sem_etc(fLinkStateChangeSem, 1, B_DO_NOT_RESCHEDULE);
@@ -679,9 +680,9 @@ Device::_SetupEndpoints()
 					if (B_OK == stream->Init()) {
 						// put the stream in the correct order:
 						// first output that input ones.
-				/* TODO		if (stream->IsInput()) {
+						if (stream->IsInput()) {
 							fStreams.PushBack(stream);
-						} else*/ {
+						} else {
 							fStreams.PushFront(stream);
 						}
 					} else {
@@ -714,7 +715,7 @@ Device::_SetupEndpoints()
 status_t
 Device::StopDevice()
 {
-	status_t result = B_OK; // WriteRXControlRegister(0);
+	status_t result = B_OK;
 
 	if (result != B_OK) {
 		TRACE_ALWAYS("Error of writing %#04x RX Control:%#010x\n", 0, result);

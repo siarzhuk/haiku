@@ -62,7 +62,6 @@ protected:
 		uint8				fTerminalID;
 		usb_pipe			fStreamEndpoint;
 		bool				fIsRunning;
-/*		uint32				fHWChannel;*/
 		area_id				fArea;
 		usb_iso_packet_descriptor*	fDescriptors;
 		size_t						fDescriptorsCount;
@@ -71,12 +70,8 @@ protected:
 		size_t				fSamplesCount;
 		size_t				fPacketSize;
 		int32				fProcessedBuffers;
-//		void*				fBuffersPhysAddress;
-/*		bigtime_t			fRealTime;
-		bigtime_t			fFramesCount;
-		int32				fBufferCycle;
-public:
-		uint32				fCSP; */
+		_multi_format		fFormat;
+
 private:
 		status_t			_QueueNextTransfer(size_t buffer);
 static	void				_TransferCallback(void *cookie, int32 status,

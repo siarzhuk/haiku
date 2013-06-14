@@ -27,13 +27,9 @@ Stream::Stream(Device *device, size_t interface, usb_interface_list *List
 			fStartingFrame(0),
 			fSamplesCount(0),
 			fPacketSize(0),
-			fProcessedBuffers(0)/*,
-			fBuffersPhysAddress(0)/ *,
-			fRealTime(0),
-			fFramesCount(0),
-			fBufferCycle(0)*/
+			fProcessedBuffers(0)
 {
-
+	memset(&fFormat, 0, sizeof(_multi_format));
 }
 
 
@@ -113,7 +109,9 @@ Stream::Init()
 												fActiveAlternate]->Endpoint();
 	fIsInput = (endpoint->fEndpointAddress & USB_ENDPOINT_ADDR_DIR_IN)
 													== USB_ENDPOINT_ADDR_DIR_IN;
-	TRACE("Alternate %d selected!\n", fActiveAlternate);
+	TRACE("Alternate %d EP:%x selected for %s!\n",
+		fActiveAlternate, endpoint->fEndpointAddress,
+		fIsInput ? "recording" : "playback");
 
 	TypeIFormatDescriptor* format
 		= static_cast<TypeIFormatDescriptor*>(fAlternates[
@@ -153,7 +151,7 @@ Stream::Init()
 	get_memory_map(fDescriptors, bufferSize, &PhysEntry, 1);
 
 	TRACE_ALWAYS("Created area id: "
-			"%d\naddress:%#010x[phys:%#010x]\nsize:%#010lx\n",
+			"%d\naddress:%#010x[phys:%#010lx]\nsize:%#010lx\n",
 			fArea, fDescriptors, PhysEntry.address, bufferSize);
 
 	fDescriptorsCount = bufferSize;
@@ -216,10 +214,10 @@ Stream::OnSetConfiguration(usb_device device,
 			
 			size_t actualLength = 0;
 			uint32 speed = 48000;
-			uint8 data[3] = {
-				0xFF & speed,
-				0xFF & speed >> 8,
-				0xFF & speed >> 16 };
+			uint8 data[3];
+			data[0]	= 0xFF & speed;
+			data[1]	= (uint8) 0xFF & speed >> 8;
+			data[2]	= (uint8) 0xFF & speed >> 16;
 	
 			status_t status = gUSBModule->send_request(device,
 					USB_REQTYPE_CLASS | USB_REQTYPE_ENDPOINT_OUT,
@@ -244,12 +242,9 @@ Stream::Start()
 {
 	status_t result = B_BUSY;
 	if (!fIsRunning) {
-		if (!fIsInput) {
+		if (!fIsInput) { // TODO: recording
 			for (size_t i = 0; i < kSamplesBufferCount; i++)
 				result = _QueueNextTransfer(i);
-			// TODO
-		//		result = _QueueNextTransfer(0);
-			//result = B_OK;
 		} else
 			result = B_OK;
 		fIsRunning = result == B_OK;
@@ -323,24 +318,19 @@ void
 Stream::_TransferCallback(void *cookie, int32 status, void *data,
 	uint32 actualLength)
 {
-	Stream *stream = (Stream *)cookie;
-/*
-	stream->fCurrentBuffer++;
-	if (stream->fCurrentBuffer >= kSamplesBufferCount) {
-		stream->fCurrentBuffer = 0;
-	} // TODO use modulo operation? ;)
-*/
-	stream->fCurrentBuffer = (stream->fCurrentBuffer + 1) % kSamplesBufferCount;
+	if (status == B_CANCELED) {
+		TRACE_ALWAYS("Cancelled: c:%p st:%#010x, data:%#010x, len:%d\n",
+			   cookie, status, data, actualLength);
+		return;
+	}
 
-//	stream->_DumpDescriptors();
+	Stream *stream = (Stream *)cookie;
+	
+	stream->fCurrentBuffer = (stream->fCurrentBuffer + 1) % kSamplesBufferCount;
 
 	stream->_DumpDescriptors();
 
-//	static size_t CCC = 0;
-
-//	if (CCC++ < 10) {
-
-	status_t result = stream->_QueueNextTransfer(stream->fCurrentBuffer);
+	/*status_t result =*/ stream->_QueueNextTransfer(stream->fCurrentBuffer);
 
 	if (atomic_add(&stream->fProcessedBuffers, 1) > (int32)kSamplesBufferCount) {
 		TRACE_ALWAYS("Processed buffers overflow:%d\n", stream->fProcessedBuffers);
@@ -349,28 +339,18 @@ Stream::_TransferCallback(void *cookie, int32 status, void *data,
 	release_sem_etc(stream->fDevice->fBuffersReadySem, 1, B_DO_NOT_RESCHEDULE);
 
 	// TRACE_ALWAYS("st:%#010x, len:%d -> %#010x\n", status, actualLength, result);
-	TRACE_ALWAYS("st:%#010x, data:%#010x, len:%d\n", status, data, actualLength);
-	
-//	}
-/*	if (status != B_OK) {
-		TRACE_ALWAYS("Device status error:%#010x\n", status);
-		status_t result = gUSBModule->clear_feature(device->fControLeNDPOint,
-													USB_FEATURE_ENDPOINT_HALT);
-		if (result != B_OK)
-			TRACE_ALWAYS("Error during clearing of HALT state:%#010x.\n", result);
-	}
-*/
+	TRACE("st:%#010x, data:%#010x, len:%d\n", status, data, actualLength);
 }
 
 
 void
 Stream::_DumpDescriptors()
 {
-	size_t packetsCount = fDescriptorsCount / kSamplesBufferCount;
+	//size_t packetsCount = fDescriptorsCount / kSamplesBufferCount;
 	size_t from = /*fCurrentBuffer > 0 ? packetsCount :*/ 0 ;
 	size_t to   = /*fCurrentBuffer > 0 ?*/ fDescriptorsCount /*: packetsCount*/ ;
 	for (size_t i = from; i < to; i++) {
-		TRACE_ALWAYS("%d:req_len:%d; act_len:%d; stat:%#010x\n", i,
+		TRACE("%d:req_len:%d; act_len:%d; stat:%#010x\n", i,
 			fDescriptors[i].request_length,	fDescriptors[i].actual_length,
 			fDescriptors[i].status);
 	}
@@ -419,11 +399,17 @@ Stream::GetGlobalFormat(multi_format_info *Format)
 		Format->input.rate = B_SR_48000;
 		Format->input.cvsr = 48000;
 		Format->input.format = B_FMT_16BIT;
+		TRACE("input.rate:%d\n",		Format->input.rate);
+		TRACE("input.cvsr:%f\n",		Format->input.cvsr);
+		TRACE("input.format:%#08x\n",	Format->input.format);
 	} else {
 		// TODO
 		Format->output.rate = B_SR_48000;
 		Format->output.cvsr = 48000;
 		Format->output.format = B_FMT_16BIT;
+		TRACE("output.rate:%d\n",		Format->output.rate);
+		TRACE("output.cvsr:%f\n",		Format->output.cvsr);
+		TRACE("output.format:%#08x\n",	Format->output.format);
 	}
 
 	return B_OK;
@@ -480,8 +466,8 @@ Stream::GetBuffers(multi_buffer_list* List)
 	TypeIFormatDescriptor* format
 		= static_cast<TypeIFormatDescriptor*>(
 						fAlternates[fActiveAlternate]->Format());
-	const ASEndpointDescriptor* endpoint
-					= fAlternates[fActiveAlternate]->Endpoint();
+//	const ASEndpointDescriptor* endpoint
+//					= fAlternates[fActiveAlternate]->Endpoint();
 
 	// [buffer][channel] init buffers
 	for (size_t buffer = 0; buffer < kSamplesBufferCount; buffer++) {
@@ -522,29 +508,6 @@ Stream::GetBuffers(multi_buffer_list* List)
 }
 
 
-/*
-int32
-Stream::InterruptHandler(uint32 SignaledChannelsMask)
-{
-	uint32 ChannelMask = 1 << fHWChannel;
-	if ((SignaledChannelsMask & ChannelMask) == 0) {
-		return B_UNHANDLED_INTERRUPT;
-	}
-
-	uint32 CurrentSamplePositionFlag = fDevice->ReadPCI32(TrCurSPFBReg);
-
-	fRealTime = system_time();
-	fFramesCount += fBufferSize;
-	fBufferCycle = ((CurrentSamplePositionFlag & ChannelMask) == ChannelMask) ? 1 : 0;
-
-fCSP = CurrentSamplePositionFlag;
-
-	release_sem_etc(fDevice->fBuffersReadySem, 1, B_DO_NOT_RESCHEDULE);
-
-	return B_HANDLED_INTERRUPT;
-}*/
-
-
 bool
 Stream::ExchangeBuffer(multi_buffer_info* Info)
 {
@@ -557,9 +520,6 @@ Stream::ExchangeBuffer(multi_buffer_info* Info)
 	Info->played_real_time = system_time();// TODO fRealTime;
 	Info->played_frames_count += fSamplesCount / kSamplesBufferCount;
 	Info->playback_buffer_cycle = fCurrentBuffer;
-
-//	fCurrentBuffer++;
-//	fCurrentBuffer %= kSamplesBufferCount;
 
 	atomic_add(&fProcessedBuffers, -1);
 
