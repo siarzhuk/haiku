@@ -80,13 +80,11 @@ static	int32						_InterruptHandler(void *data);
 										ohci_general_td *dataDescriptor,
 										ohci_general_td *lastDescriptor,
 										bool directionIn);
-#if 0		
-		status_t					_CancelQueuedIsochronousTransfers(
-										Pipe *pipe, bool force);
-#endif		
+
 		status_t					_UnlinkTransfer(transfer_data *transfer);
 
-		status_t					_AddPendingTransfer(Transfer *transfer,
+		status_t					_AddPendingIsochronousTransfer(
+										Transfer *transfer,
 										ohci_endpoint_descriptor *endpoint,
 										ohci_isochronous_td *firstDescriptor,
 										ohci_isochronous_td *lastDescriptor,
@@ -136,7 +134,7 @@ static	int32						_FinishThread(void *data);
 		void						_FreeDescriptorChain(
 										ohci_general_td *topDescriptor);
 		
-		void						_FreeDescriptorChain(
+		void						_FreeIsochronousDescriptorChain(
 										ohci_isochronous_td *topDescriptor);
 
 		size_t						_WriteDescriptorChain(
@@ -160,24 +158,25 @@ static	int32						_FinishThread(void *data);
 
 		ohci_isochronous_td *		_CreateIsochronousDescriptor(
 										size_t bufferSize);
-		void						_FreeDescriptor( // TODO templateize?
+		void						_FreeIsochronousDescriptor(
 										ohci_isochronous_td *descriptor);
-		status_t					_CreateDescriptorChain(
+		status_t					_CreateIsochronousDescriptorChain(
 										ohci_isochronous_td **firstDescriptor,
 										ohci_isochronous_td **lastDescriptor,
 										Transfer *transfer);
 
 		status_t					_GetStatusOfConditionCode(
 										uint8 conditionCode);
-		size_t						_WriteDescriptorChain(
+		size_t						_WriteIsochronousDescriptorChain(
 										ohci_isochronous_td *topDescriptor,
 										iovec *vector, size_t vectorCount);
 		bool						_AllocateBandwidth(uint16 frame, Pipe *pipe,
 										uint16 size);
 		void						_ReleaseBandwidth(uint16 startFrame, uint16 count,
 										Pipe *pipe);
-		void						_ReleaseBandwidth(Pipe *pipe);
+//		void						_ReleaseBandwidth(Pipe *pipe);
 		void						_ReleaseBandwidthMap();
+		void						_PurgeBandwidthMap();
 		// Private locking
 		bool						_LockEndpoints();
 		void						_UnlockEndpoints();
