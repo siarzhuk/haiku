@@ -21,7 +21,8 @@ Stream::Stream(Device *device, size_t interface, usb_interface_list *List
 			fStreamEndpoint(0),
 			fIsRunning(false),
 			fArea(-1),
-			fDescriptors(0),
+			fAreaSize(0),
+			fDescriptors(NULL),
 			fDescriptorsCount(0),
 			fCurrentBuffer(0),
 			fStartingFrame(0),
@@ -40,7 +41,7 @@ Stream::~Stream()
 
 
 status_t
-Stream::Init()
+Stream::_ChooseAlternate()
 {
 	// lookup alternate with maximal (ch * 100 + resolution)
 	uint16 maxChxRes = 0;
@@ -103,8 +104,9 @@ Stream::Init()
 
 	if (maxChxRes <= 0) {
 		TRACE("No compatible alternate found. Stream initialization failed.\n");
-		return fStatus;
+		return B_NO_INIT;
 	}
+
 	const ASEndpointDescriptor* endpoint = fAlternates[
 												fActiveAlternate]->Endpoint();
 	fIsInput = (endpoint->fEndpointAddress & USB_ENDPOINT_ADDR_DIR_IN)
@@ -113,75 +115,90 @@ Stream::Init()
 		fActiveAlternate, endpoint->fEndpointAddress,
 		fIsInput ? "recording" : "playback");
 
-	TypeIFormatDescriptor* format
-		= static_cast<TypeIFormatDescriptor*>(fAlternates[
-												fActiveAlternate]->Format());
+	return B_OK;
+}
 
-	size_t bufferSize = format->fNumChannels * format->fSubframeSize;
-	TRACE("bufferSize:%d\n", bufferSize);
 
-	bufferSize *= kSamplesBufferSize;
-	TRACE("bufferSize:%d\n", bufferSize);
+status_t
+Stream::Init()
+{
+	fStatus = _ChooseAlternate();
+	if (fStatus != B_OK)
+		return fStatus;
 
-	// TODO: 48 samples for usb 1 - test case!
-	fPacketSize	= 192;
+	// allocate buffer for worst (maximal size) case
+	TypeIFormatDescriptor* format = static_cast<TypeIFormatDescriptor*>(
+		fAlternates[fActiveAlternate]->Format());
+	
+	//uint32 samplingRate = format->GetMaxSamplingRate();
+	uint32 samplingRate = fAlternates[fActiveAlternate]->GetSamplingRate();
+	
+/*	// fill format info container
+	fStatus = fAlternates[fActiveAlternate]->GetMultiFormat(fFormat, samplingRate);
+	if (fStatus != B_OK)
+		return fStatus;
+*/
+	uint32 sampleSize = format->fNumChannels * format->fSubframeSize;
+	
+	// data size pro 1 ms USB 1 frame or 1/8 ms USB 2 microframe
+	fPacketSize = samplingRate * sampleSize
+		/ (fDevice->fUSBVersion < 0x0200 ? 1000 : 8000);
+	TRACE("packetSize:%ld\n", fPacketSize);
 
-	bufferSize *= (sizeof(usb_iso_packet_descriptor) + fPacketSize); 
-	TRACE("bufferSize:%d\n", bufferSize);
+	fAreaSize = (sizeof(usb_iso_packet_descriptor) + fPacketSize)
+		* sampleSize * 1024 / fPacketSize;
+	TRACE("estimate fAreaSize:%d\n", fAreaSize);
 
-	bufferSize /= fPacketSize;
-	TRACE("bufferSize:%d\n", bufferSize);
+	// round up to B_PAGE_SIZE and create area
+	fAreaSize = (fAreaSize + (B_PAGE_SIZE - 1)) &~ (B_PAGE_SIZE - 1);
+	TRACE("rounded up fAreaSize:%d\n", fAreaSize);
 
-	bufferSize = (bufferSize + (B_PAGE_SIZE - 1)) &~ (B_PAGE_SIZE - 1);
-	TRACE("bufferSize:%d\n", bufferSize);
-
-	fArea = create_area( (fIsInput) ? DRIVER_NAME "_record_area" :
-											DRIVER_NAME "_playback_area",
-								(void**)&fDescriptors, B_ANY_KERNEL_ADDRESS,
-									bufferSize, B_CONTIGUOUS,
-										B_READ_AREA | B_WRITE_AREA);
+	fArea = create_area( (fIsInput) ? DRIVER_NAME "_record_area"
+		: DRIVER_NAME "_playback_area", (void**)&fDescriptors,
+		B_ANY_KERNEL_ADDRESS, fAreaSize, B_CONTIGUOUS,
+		B_READ_AREA | B_WRITE_AREA);
+	
 	if (fArea < 0) {
 		TRACE_ALWAYS("Error of creating %#x - bytes size buffer area:%#010x\n",
-												bufferSize, fArea);
+												fAreaSize, fArea);
 		fStatus = fArea;
 		return fStatus;
 	}
 
-	physical_entry PhysEntry;
-	get_memory_map(fDescriptors, bufferSize, &PhysEntry, 1);
+//	physical_entry PhysEntry;
+//	get_memory_map(fDescriptors, fAreaSize, &PhysEntry, 1);
 
 	TRACE_ALWAYS("Created area id: "
-			"%d\naddress:%#010x[phys:%#010lx]\nsize:%#010lx\n",
-			fArea, fDescriptors, PhysEntry.address, bufferSize);
+	//		"%d\naddress:%#010x[phys:%#010lx]\nsize:%#010lx\n",
+	//		fArea, fDescriptors, PhysEntry.address, fAreaSize);
+		"%d at address:%#010x with size:%#010lx\n",
+		fArea, fDescriptors, fAreaSize);
 
-	fDescriptorsCount = bufferSize;
-	fDescriptorsCount /= (sizeof(usb_iso_packet_descriptor)
-												+ fPacketSize);
+	// descriptors count
+	fDescriptorsCount = fAreaSize
+		/ (sizeof(usb_iso_packet_descriptor) + fPacketSize);
+	
+	// we need same size sub-buffers. round it
 	fDescriptorsCount /= kSamplesBufferCount;
-	// we need same size buffers. round it!
 	fDescriptorsCount *= kSamplesBufferCount;
+	TRACE("descriptorsCount:%d\n", fDescriptorsCount);
 
-	fSamplesCount = fDescriptorsCount * fPacketSize;
+	// samples count
+	fSamplesCount = fDescriptorsCount * fPacketSize / sampleSize;
 	TRACE("samplesCount:%d\n", fSamplesCount);
 
-	fSamplesCount /= format->fNumChannels * format->fSubframeSize;
-	TRACE("samplesCount:%d\n", fSamplesCount);
-
+	// initialize descriptors array
 	for (size_t i = 0; i < fDescriptorsCount; i++) {
 		fDescriptors[i].request_length = fPacketSize;
 		fDescriptors[i].actual_length = 0;
 		fDescriptors[i].status = B_OK;
 	}
 
-/*	uint32* b = (uint32*)(fDescriptors + fDescriptorsCount);
-	for (size_t i = 0; i < fSamplesCount; i++) {
-		b[i] = i * 10;
-	}*/
+/*	fFormat.rate = ;
+	fFormat.cvsr = samplingRate;
+	fFormat.format = ;*/
 
-	TRACE_ALWAYS("Descriptors count:%d\nsample size:%d\nchannels:%d:%d\n",
-			fDescriptorsCount, format->fSubframeSize, format->fNumChannels,
-				sizeof(usb_iso_packet_descriptor));
-	return fStatus = B_OK;
+	return fStatus;
 }
 
 
@@ -394,7 +411,15 @@ Stream::SetEnabledChannels(uint32& offset, multi_channel_enable *Enable)
 status_t
 Stream::GetGlobalFormat(multi_format_info *Format)
 {
-	if (IsInput()) {
+	_multi_format* mf = fIsInput ? &Format->input : &Format->output;
+	mf->cvsr = fAlternates[fActiveAlternate]->GetSamplingRate();
+	mf->rate = fAlternates[fActiveAlternate]->GetSamplingRateId(0);
+	mf->format = fAlternates[fActiveAlternate]->GetFormatId();
+	TRACE("%s.rate:%d cvsr:%f format:%#08x\n",
+		fIsInput ? "input" : "ouput",
+		mf->rate, mf->cvsr, mf->format);
+	
+	/*if (IsInput()) {
 		Format->input.cvsr = fAlternates[fActiveAlternate]->GetSamplingRate();
 		Format->input.rate = fAlternates[fActiveAlternate]->GetSamplingRateId(0);
 		Format->input.format = fAlternates[fActiveAlternate]->GetFormatId();
@@ -408,7 +433,7 @@ Stream::GetGlobalFormat(multi_format_info *Format)
 		TRACE("output.rate:%d\n",		Format->output.rate);
 		TRACE("output.cvsr:%f\n",		Format->output.cvsr);
 		TRACE("output.format:%#08x\n",	Format->output.format);
-	}
+	}*/
 
 	return B_OK;
 }
@@ -417,6 +442,19 @@ Stream::GetGlobalFormat(multi_format_info *Format)
 status_t
 Stream::SetGlobalFormat(multi_format_info *Format)
 {
+	_multi_format* mf = fIsInput ? &Format->input : &Format->output;
+	AudioStreamAlternate* alternate = fAlternates[fActiveAlternate];
+	if (mf->rate == alternate->GetSamplingRateId(0)
+		&& mf->format == alternate->GetFormatId())
+		return B_OK;
+
+	alternate->SetSamplingRateById(mf->rate);
+	alternate->SetFormatId(mf->format);
+	TRACE("%s.rate:%d cvsr:%f format:%#08x\n",
+		fIsInput ? "input" : "ouput",
+		mf->rate, mf->cvsr, mf->format);
+
+	/*
 	if (IsInput()) {
 		fAlternates[fActiveAlternate]->SetSamplingRateById(Format->input.rate);
 		fAlternates[fActiveAlternate]->SetFormatId(Format->input.format);
@@ -429,6 +467,42 @@ Stream::SetGlobalFormat(multi_format_info *Format)
 		TRACE("output.rate:%d\n",		Format->output.rate);
 		TRACE("output.cvsr:%f\n",		Format->output.cvsr);
 		TRACE("output.format:%#08x\n",	Format->output.format);
+	}*/
+
+	// layout of buffers should be adjusted after changing sampling rate/format
+	// first cancel the data flow - will be rewaked at next buffer exchange call
+	Stop();
+
+	// TODO: wait for cancelling?
+	
+	TypeIFormatDescriptor* format = static_cast<TypeIFormatDescriptor*>
+		(fAlternates[fActiveAlternate]->Format());
+	
+	uint32 samplingRate = alternate->GetSamplingRate();
+	uint32 sampleSize = format->fNumChannels * format->fSubframeSize;
+	
+	// data size pro 1 ms USB 1 frame or 1/8 ms USB 2 microframe
+	fPacketSize = samplingRate * sampleSize
+		/ (fDevice->fUSBVersion < 0x0200 ? 1000 : 8000);
+	TRACE("new packetSize:%ld\n", fPacketSize);
+
+	fDescriptorsCount = fAreaSize
+		/ (sizeof(usb_iso_packet_descriptor) + fPacketSize);
+	
+	// we need same size sub-buffers. round it
+	fDescriptorsCount /= kSamplesBufferCount;
+	fDescriptorsCount *= kSamplesBufferCount;
+	TRACE("new descriptorsCount:%d\n", fDescriptorsCount);
+
+	// samples count
+	fSamplesCount = fDescriptorsCount * fPacketSize / sampleSize;
+	TRACE("new samplesCount:%d\n", fSamplesCount);
+
+	// initialize descriptors array
+	for (size_t i = 0; i < fDescriptorsCount; i++) {
+		fDescriptors[i].request_length = fPacketSize;
+		fDescriptors[i].actual_length = 0;
+		fDescriptors[i].status = B_OK;
 	}
 
 	return B_OK;

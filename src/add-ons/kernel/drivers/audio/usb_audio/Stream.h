@@ -63,6 +63,7 @@ protected:
 		usb_pipe			fStreamEndpoint;
 		bool				fIsRunning;
 		area_id				fArea;
+		size_t				fAreaSize;
 		usb_iso_packet_descriptor*	fDescriptors;
 		size_t						fDescriptorsCount;
 		size_t				fCurrentBuffer;
@@ -73,6 +74,7 @@ protected:
 		_multi_format		fFormat;
 
 private:
+		status_t			_ChooseAlternate();
 		status_t			_QueueNextTransfer(size_t buffer);
 static	void				_TransferCallback(void *cookie, int32 status,
 								void *data, uint32 actualLength);
