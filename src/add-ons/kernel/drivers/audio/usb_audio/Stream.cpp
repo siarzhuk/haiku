@@ -395,18 +395,16 @@ status_t
 Stream::GetGlobalFormat(multi_format_info *Format)
 {
 	if (IsInput()) {
-		// TODO
-		Format->input.rate = B_SR_48000;
-		Format->input.cvsr = 48000;
-		Format->input.format = B_FMT_16BIT;
+		Format->input.cvsr = fAlternates[fActiveAlternate]->GetSamplingRate();
+		Format->input.rate = fAlternates[fActiveAlternate]->GetSamplingRateId(0);
+		Format->input.format = fAlternates[fActiveAlternate]->GetFormatId();
 		TRACE("input.rate:%d\n",		Format->input.rate);
 		TRACE("input.cvsr:%f\n",		Format->input.cvsr);
 		TRACE("input.format:%#08x\n",	Format->input.format);
 	} else {
-		// TODO
-		Format->output.rate = B_SR_48000;
-		Format->output.cvsr = 48000;
-		Format->output.format = B_FMT_16BIT;
+		Format->output.cvsr = fAlternates[fActiveAlternate]->GetSamplingRate();
+		Format->output.rate = fAlternates[fActiveAlternate]->GetSamplingRateId(0);
+		Format->output.format = fAlternates[fActiveAlternate]->GetFormatId();
 		TRACE("output.rate:%d\n",		Format->output.rate);
 		TRACE("output.cvsr:%f\n",		Format->output.cvsr);
 		TRACE("output.format:%#08x\n",	Format->output.format);
@@ -420,12 +418,14 @@ status_t
 Stream::SetGlobalFormat(multi_format_info *Format)
 {
 	if (IsInput()) {
-		// TODO
+		fAlternates[fActiveAlternate]->SetSamplingRateById(Format->input.rate);
+		fAlternates[fActiveAlternate]->SetFormatId(Format->input.format);
 		TRACE("input.rate:%d\n",		Format->input.rate);
 		TRACE("input.cvsr:%f\n",		Format->input.cvsr);
 		TRACE("input.format:%#08x\n",	Format->input.format);
 	} else {
-		// TODO
+		fAlternates[fActiveAlternate]->SetSamplingRateById(Format->output.rate);
+		fAlternates[fActiveAlternate]->SetFormatId(Format->output.format);
 		TRACE("output.rate:%d\n",		Format->output.rate);
 		TRACE("output.cvsr:%f\n",		Format->output.cvsr);
 		TRACE("output.format:%#08x\n",	Format->output.format);
