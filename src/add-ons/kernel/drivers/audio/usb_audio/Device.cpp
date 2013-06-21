@@ -556,6 +556,10 @@ Device::_MultiGetBuffers(multi_buffer_list* List)
 		List->request_record_channels,
 		List->request_record_buffer_size);
 
+	List->flags = 0;
+	List->return_playback_channels = 0;
+	List->return_record_channels = 0;
+	
 	for (int i = 0; i < fStreams.Count() && status == B_OK; i++) {
 		status = fStreams[i]->GetBuffers(List);
 	}

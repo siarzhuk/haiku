@@ -215,7 +215,7 @@ AudioStreamAlternate::AudioStreamAlternate(size_t alternate,
 			fFormat(format),
 			fSamplingRate(0)
 {
-	SetSamplingRate(0); // init to default (max) sampling rate
+	// SetSamplingRate(0); // init to default (max) sampling rate
 }
 
 

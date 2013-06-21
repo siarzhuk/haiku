@@ -123,21 +123,19 @@ status_t
 Stream::Init()
 {
 	fStatus = _ChooseAlternate();
-	if (fStatus != B_OK)
-		return fStatus;
+	//if (fStatus != B_OK)
+	return fStatus;
+}
 
+
+status_t
+Stream::_SetupBuffers()
+{
 	// allocate buffer for worst (maximal size) case
 	TypeIFormatDescriptor* format = static_cast<TypeIFormatDescriptor*>(
 		fAlternates[fActiveAlternate]->Format());
 	
-	//uint32 samplingRate = format->GetMaxSamplingRate();
 	uint32 samplingRate = fAlternates[fActiveAlternate]->GetSamplingRate();
-	
-/*	// fill format info container
-	fStatus = fAlternates[fActiveAlternate]->GetMultiFormat(fFormat, samplingRate);
-	if (fStatus != B_OK)
-		return fStatus;
-*/
 	uint32 sampleSize = format->fNumChannels * format->fSubframeSize;
 	
 	// data size pro 1 ms USB 1 frame or 1/8 ms USB 2 microframe
@@ -145,34 +143,33 @@ Stream::Init()
 		/ (fDevice->fUSBVersion < 0x0200 ? 1000 : 8000);
 	TRACE("packetSize:%ld\n", fPacketSize);
 
-	fAreaSize = (sizeof(usb_iso_packet_descriptor) + fPacketSize)
-		* sampleSize * 1024 / fPacketSize;
-	TRACE("estimate fAreaSize:%d\n", fAreaSize);
+	if (fArea == -1) {
+		fAreaSize = (sizeof(usb_iso_packet_descriptor) + fPacketSize)
+			* sampleSize * 1024 / fPacketSize;
+		TRACE("estimate fAreaSize:%d\n", fAreaSize);
 
-	// round up to B_PAGE_SIZE and create area
-	fAreaSize = (fAreaSize + (B_PAGE_SIZE - 1)) &~ (B_PAGE_SIZE - 1);
-	TRACE("rounded up fAreaSize:%d\n", fAreaSize);
+		// round up to B_PAGE_SIZE and create area
+		fAreaSize = (fAreaSize + (B_PAGE_SIZE - 1)) &~ (B_PAGE_SIZE - 1);
+		TRACE("rounded up fAreaSize:%d\n", fAreaSize);
 
-	fArea = create_area( (fIsInput) ? DRIVER_NAME "_record_area"
-		: DRIVER_NAME "_playback_area", (void**)&fDescriptors,
-		B_ANY_KERNEL_ADDRESS, fAreaSize, B_CONTIGUOUS,
-		B_READ_AREA | B_WRITE_AREA);
-	
-	if (fArea < 0) {
-		TRACE_ALWAYS("Error of creating %#x - bytes size buffer area:%#010x\n",
-												fAreaSize, fArea);
-		fStatus = fArea;
-		return fStatus;
+		fArea = create_area( (fIsInput) ? DRIVER_NAME "_record_area"
+			: DRIVER_NAME "_playback_area", (void**)&fDescriptors,
+			B_ANY_KERNEL_ADDRESS, fAreaSize, B_CONTIGUOUS,
+			B_READ_AREA | B_WRITE_AREA);
+		
+		if (fArea < 0) {
+			TRACE_ALWAYS("Error of creating %#x - bytes size buffer area:%#010x\n",
+													fAreaSize, fArea);
+			fStatus = fArea;
+			return fStatus;
+		}
+
+	//	physical_entry PhysEntry;
+	//	get_memory_map(fDescriptors, fAreaSize, &PhysEntry, 1);
+
+		TRACE_ALWAYS("Created area id:%d at addr:%#010x size:%#010lx\n",
+			fArea, fDescriptors, fAreaSize);
 	}
-
-//	physical_entry PhysEntry;
-//	get_memory_map(fDescriptors, fAreaSize, &PhysEntry, 1);
-
-	TRACE_ALWAYS("Created area id: "
-	//		"%d\naddress:%#010x[phys:%#010lx]\nsize:%#010lx\n",
-	//		fArea, fDescriptors, PhysEntry.address, fAreaSize);
-		"%d at address:%#010x with size:%#010lx\n",
-		fArea, fDescriptors, fAreaSize);
 
 	// descriptors count
 	fDescriptorsCount = fAreaSize
@@ -193,10 +190,6 @@ Stream::Init()
 		fDescriptors[i].actual_length = 0;
 		fDescriptors[i].status = B_OK;
 	}
-
-/*	fFormat.rate = ;
-	fFormat.cvsr = samplingRate;
-	fFormat.format = ;*/
 
 	return fStatus;
 }
@@ -228,7 +221,7 @@ Stream::OnSetConfiguration(usb_device device,
 			fStreamEndpoint = interface->endpoint[i].handle;
 			TRACE("%s Stream Endpoint [address %#04x] handle is: %#010x.\n",
 					fIsInput ? "Input" : "Output", address, fStreamEndpoint);
-			
+/*			
 			size_t actualLength = 0;
 			uint32 speed = 48000;
 			uint8 data[3];
@@ -243,7 +236,7 @@ Stream::OnSetConfiguration(usb_device device,
 			
 			TRACE_ALWAYS("set_speed for ep %#x %d: %x\n",
 					address, actualLength, status);
-			
+*/			
 			return B_OK;
 		}
 	}
@@ -411,30 +404,13 @@ Stream::SetEnabledChannels(uint32& offset, multi_channel_enable *Enable)
 status_t
 Stream::GetGlobalFormat(multi_format_info *Format)
 {
-	_multi_format* mf = fIsInput ? &Format->input : &Format->output;
-	mf->cvsr = fAlternates[fActiveAlternate]->GetSamplingRate();
-	mf->rate = fAlternates[fActiveAlternate]->GetSamplingRateId(0);
-	mf->format = fAlternates[fActiveAlternate]->GetFormatId();
+	_multi_format* format = fIsInput ? &Format->input : &Format->output;
+	format->cvsr = fAlternates[fActiveAlternate]->GetSamplingRate();
+	format->rate = fAlternates[fActiveAlternate]->GetSamplingRateId(0);
+	format->format = fAlternates[fActiveAlternate]->GetFormatId();
 	TRACE("%s.rate:%d cvsr:%f format:%#08x\n",
 		fIsInput ? "input" : "ouput",
-		mf->rate, mf->cvsr, mf->format);
-	
-	/*if (IsInput()) {
-		Format->input.cvsr = fAlternates[fActiveAlternate]->GetSamplingRate();
-		Format->input.rate = fAlternates[fActiveAlternate]->GetSamplingRateId(0);
-		Format->input.format = fAlternates[fActiveAlternate]->GetFormatId();
-		TRACE("input.rate:%d\n",		Format->input.rate);
-		TRACE("input.cvsr:%f\n",		Format->input.cvsr);
-		TRACE("input.format:%#08x\n",	Format->input.format);
-	} else {
-		Format->output.cvsr = fAlternates[fActiveAlternate]->GetSamplingRate();
-		Format->output.rate = fAlternates[fActiveAlternate]->GetSamplingRateId(0);
-		Format->output.format = fAlternates[fActiveAlternate]->GetFormatId();
-		TRACE("output.rate:%d\n",		Format->output.rate);
-		TRACE("output.cvsr:%f\n",		Format->output.cvsr);
-		TRACE("output.format:%#08x\n",	Format->output.format);
-	}*/
-
+		format->rate, format->cvsr, format->format);
 	return B_OK;
 }
 
@@ -442,39 +418,51 @@ Stream::GetGlobalFormat(multi_format_info *Format)
 status_t
 Stream::SetGlobalFormat(multi_format_info *Format)
 {
-	_multi_format* mf = fIsInput ? &Format->input : &Format->output;
+	_multi_format* format = fIsInput ? &Format->input : &Format->output;
 	AudioStreamAlternate* alternate = fAlternates[fActiveAlternate];
-	if (mf->rate == alternate->GetSamplingRateId(0)
-		&& mf->format == alternate->GetFormatId())
+	if (format->rate == alternate->GetSamplingRateId(0)
+		&& format->format == alternate->GetFormatId()) {
+		TRACE("No changes required\n");
 		return B_OK;
+	}
 
-	alternate->SetSamplingRateById(mf->rate);
-	alternate->SetFormatId(mf->format);
+	alternate->SetSamplingRateById(format->rate);
+	alternate->SetFormatId(format->format);
 	TRACE("%s.rate:%d cvsr:%f format:%#08x\n",
 		fIsInput ? "input" : "ouput",
-		mf->rate, mf->cvsr, mf->format);
+		format->rate, format->cvsr, format->format);
 
-	/*
-	if (IsInput()) {
-		fAlternates[fActiveAlternate]->SetSamplingRateById(Format->input.rate);
-		fAlternates[fActiveAlternate]->SetFormatId(Format->input.format);
-		TRACE("input.rate:%d\n",		Format->input.rate);
-		TRACE("input.cvsr:%f\n",		Format->input.cvsr);
-		TRACE("input.format:%#08x\n",	Format->input.format);
-	} else {
-		fAlternates[fActiveAlternate]->SetSamplingRateById(Format->output.rate);
-		fAlternates[fActiveAlternate]->SetFormatId(Format->output.format);
-		TRACE("output.rate:%d\n",		Format->output.rate);
-		TRACE("output.cvsr:%f\n",		Format->output.cvsr);
-		TRACE("output.format:%#08x\n",	Format->output.format);
-	}*/
-
-	// layout of buffers should be adjusted after changing sampling rate/format
-	// first cancel the data flow - will be rewaked at next buffer exchange call
+	// cancel data flow - it will be rewaked at next buffer exchange call
 	Stop();
 
 	// TODO: wait for cancelling?
+
+	// layout of buffers should be adjusted after changing sampling rate/format
+	status_t status = _SetupBuffers();
+
+	if (status != B_OK)
+		return status;
+
+	// set endpoint speed	
+	uint32 samplingRate = fAlternates[fActiveAlternate]->GetSamplingRate();
+	size_t actualLength = 0;
+	uint8 data[3];
+	data[0]	= 0xFF & samplingRate;
+	data[1]	= 0xFF & samplingRate >> 8;
+	data[2]	= 0xFF & samplingRate >> 16;
+	uint8 address = fAlternates[fActiveAlternate]->Endpoint()->fEndpointAddress;
+
+	status = gUSBModule->send_request(fDevice->fDevice,
+			USB_REQTYPE_CLASS | USB_REQTYPE_ENDPOINT_OUT,
+			UAS_SET_CUR, UAS_SAMPLING_FREQ_CONTROL << 8,
+			address, 3, data, &actualLength);
 	
+	TRACE_ALWAYS("set_speed %02x%02x%02x for ep %#x %d: %x\n",
+			data[0], data[1], data[2], 
+			address, actualLength, status);
+	return status;
+
+	/*	
 	TypeIFormatDescriptor* format = static_cast<TypeIFormatDescriptor*>
 		(fAlternates[fActiveAlternate]->Format());
 	
@@ -504,8 +492,8 @@ Stream::SetGlobalFormat(multi_format_info *Format)
 		fDescriptors[i].actual_length = 0;
 		fDescriptors[i].status = B_OK;
 	}
-
-	return B_OK;
+*/
+	//return B_OK;
 }
 
 
@@ -513,6 +501,8 @@ status_t
 Stream::GetBuffers(multi_buffer_list* List)
 {
 // TODO: check the available buffers count!
+	if (fAreaSize == 0)
+		return B_NO_INIT;
 
 	int32 startChannel = List->return_playback_channels;
 	buffer_desc** Buffers = List->playback_buffers;

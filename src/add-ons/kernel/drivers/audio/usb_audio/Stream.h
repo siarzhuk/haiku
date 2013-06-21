@@ -75,6 +75,7 @@ protected:
 
 private:
 		status_t			_ChooseAlternate();
+		status_t			_SetupBuffers();
 		status_t			_QueueNextTransfer(size_t buffer);
 static	void				_TransferCallback(void *cookie, int32 status,
 								void *data, uint32 actualLength);
