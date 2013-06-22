@@ -254,7 +254,7 @@ Stream::Start()
 	if (!fIsRunning) {
 		if (!fIsInput) { // TODO: recording
 			for (size_t i = 0; i < kSamplesBufferCount; i++)
-				result = _QueueNextTransfer(i);
+				result = _QueueNextTransfer(i, true);
 		} else
 			result = B_OK;
 		fIsRunning = result == B_OK;
@@ -276,7 +276,7 @@ Stream::Stop()
 
 
 status_t
-Stream::_QueueNextTransfer(size_t queuedBuffer)
+Stream::_QueueNextTransfer(size_t queuedBuffer, bool start)
 {
 	TypeIFormatDescriptor* format
 		= static_cast<TypeIFormatDescriptor*>(fAlternates[
@@ -316,7 +316,7 @@ Stream::_QueueNextTransfer(size_t queuedBuffer)
 	status_t status = gUSBModule->queue_isochronous(fStreamEndpoint,
 			buffers + bufferSize * queuedBuffer, bufferSize,
 			fDescriptors + queuedBuffer * packetsCount, packetsCount,
-			&fStartingFrame, USB_ISO_ASAP,
+			&fStartingFrame, start ? USB_ISO_ASAP : 0,
 			Stream::_TransferCallback, this);
 
 	TRACE("frame:%#010x\n", fStartingFrame);
@@ -340,7 +340,7 @@ Stream::_TransferCallback(void *cookie, int32 status, void *data,
 
 	stream->_DumpDescriptors();
 
-	/*status_t result =*/ stream->_QueueNextTransfer(stream->fCurrentBuffer);
+	/*status_t result =*/ stream->_QueueNextTransfer(stream->fCurrentBuffer, false);
 
 	if (atomic_add(&stream->fProcessedBuffers, 1) > (int32)kSamplesBufferCount) {
 		TRACE_ALWAYS("Processed buffers overflow:%d\n", stream->fProcessedBuffers);
@@ -461,39 +461,6 @@ Stream::SetGlobalFormat(multi_format_info *Format)
 			data[0], data[1], data[2], 
 			address, actualLength, status);
 	return status;
-
-	/*	
-	TypeIFormatDescriptor* format = static_cast<TypeIFormatDescriptor*>
-		(fAlternates[fActiveAlternate]->Format());
-	
-	uint32 samplingRate = alternate->GetSamplingRate();
-	uint32 sampleSize = format->fNumChannels * format->fSubframeSize;
-	
-	// data size pro 1 ms USB 1 frame or 1/8 ms USB 2 microframe
-	fPacketSize = samplingRate * sampleSize
-		/ (fDevice->fUSBVersion < 0x0200 ? 1000 : 8000);
-	TRACE("new packetSize:%ld\n", fPacketSize);
-
-	fDescriptorsCount = fAreaSize
-		/ (sizeof(usb_iso_packet_descriptor) + fPacketSize);
-	
-	// we need same size sub-buffers. round it
-	fDescriptorsCount /= kSamplesBufferCount;
-	fDescriptorsCount *= kSamplesBufferCount;
-	TRACE("new descriptorsCount:%d\n", fDescriptorsCount);
-
-	// samples count
-	fSamplesCount = fDescriptorsCount * fPacketSize / sampleSize;
-	TRACE("new samplesCount:%d\n", fSamplesCount);
-
-	// initialize descriptors array
-	for (size_t i = 0; i < fDescriptorsCount; i++) {
-		fDescriptors[i].request_length = fPacketSize;
-		fDescriptors[i].actual_length = 0;
-		fDescriptors[i].status = B_OK;
-	}
-*/
-	//return B_OK;
 }
 
 
@@ -581,9 +548,15 @@ Stream::ExchangeBuffer(multi_buffer_info* Info)
 		return false;
 	}
 
-	Info->played_real_time = system_time();// TODO fRealTime;
-	Info->played_frames_count += fSamplesCount / kSamplesBufferCount;
-	Info->playback_buffer_cycle = fCurrentBuffer;
+	if (fIsInput) {
+		Info->recorded_real_time = system_time();// TODO fRealTime;
+		Info->recorded_frames_count += fSamplesCount / kSamplesBufferCount;
+		Info->record_buffer_cycle = fCurrentBuffer;
+	} else {
+		Info->played_real_time = system_time();// TODO fRealTime;
+		Info->played_frames_count += fSamplesCount / kSamplesBufferCount;
+		Info->playback_buffer_cycle = fCurrentBuffer;
+	}
 
 	atomic_add(&fProcessedBuffers, -1);
 

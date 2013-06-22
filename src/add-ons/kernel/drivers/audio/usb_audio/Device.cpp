@@ -416,7 +416,7 @@ Device::_MultiGetDescription(multi_description *multiDescription)
 	TraceMultiDescription(&Description, Channels);
 
 	if (user_memcpy(multiDescription, &Description,
-				sizeof(multi_description)) != B_OK) {
+		sizeof(multi_description)) != B_OK) {
 		return B_BAD_ADDRESS;
 	}
 
@@ -569,8 +569,12 @@ Device::_MultiGetBuffers(multi_buffer_list* List)
 
 
 status_t
-Device::_MultiBufferExchange(multi_buffer_info* Info)
+Device::_MultiBufferExchange(multi_buffer_info* multiInfo)
 {
+	multi_buffer_info Info;
+	if (user_memcpy(&Info, multiInfo, sizeof(multi_buffer_info)) != B_OK)
+		return B_BAD_ADDRESS;
+
 	for (int i = 0; i < fStreams.Count(); i++) {
 		if (!fStreams[i]->IsRunning()) {
 			fStreams[i]->Start();
@@ -592,9 +596,12 @@ Device::_MultiBufferExchange(multi_buffer_info* Info)
 			break;
 		}
 
-		anyBufferProcessed = fStreams[i]->ExchangeBuffer(Info);
+		anyBufferProcessed = fStreams[i]->ExchangeBuffer(&Info);
 		status = anyBufferProcessed ? B_OK : B_ERROR;
 	}
+
+	if (user_memcpy(multiInfo, &Info, sizeof(multi_buffer_info)) != B_OK)
+		return B_BAD_ADDRESS;
 
 	return status;
 }
