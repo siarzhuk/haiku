@@ -20,7 +20,7 @@ class Device;
 // base class for all entities in Audio Function
 //
 //
-class _AudioFunctionEntity {
+/*class _AudioFunctionEntity {
 public:
 							_AudioFunctionEntity(Device* device, size_t interface);
 							~_AudioFunctionEntity();
@@ -32,9 +32,9 @@ protected:
 		status_t			fStatus;
 		Device*				fDevice;
 		size_t				fInterface;
-};
+};*/
 
-
+/*
 class _AudioChannelsCluster {
 public:
 							_AudioChannelsCluster();
@@ -47,13 +47,13 @@ protected:
 		uint32				fChannelsConfig;
 		uint8				fChannelNames;
 };
-
+*/
 
 //
 // base class for Audio Controls (Units and Terminals)
 //
 //
-class _AudioControl : public _AudioFunctionEntity {
+/*class _AudioControl : public _AudioFunctionEntity {
 public:
 							_AudioControl(Device* device, size_t interface,
 								usb_audiocontrol_header_descriptor* Header);
@@ -63,7 +63,7 @@ public:
 		uint8				SourceID() { return fSourceID; }
 		uint8				SubType() { return fSubType; }
 virtual	const char*			Name() { return ""; }
-virtual _AudioChannelsCluster* OutputCluster();
+//virtual _AudioChannelsCluster* OutputCluster();
 
 protected:
 		// state tracking
@@ -71,9 +71,9 @@ protected:
 		uint8				fID;
 		uint8				fSourceID;
 		uint8				fStringIndex;
-};
+}; */
 
-
+/*
 class AudioControlHeader : public _AudioControl {
 public:
 							AudioControlHeader(Device* device, size_t interface, 
@@ -86,8 +86,8 @@ public:
 		uint8				fFunctionCategory;
 		uint8				fControlsBitmap;
 };
-
-
+*/
+/*
 class _Terminal : public _AudioControl {
 public:
 							_Terminal(Device* device, size_t interface,
@@ -167,18 +167,18 @@ protected:
 };
 
 
-class EffectUnit : public _AudioControl/*, public _AudioChannelsCluster*/ {
+class EffectUnit : public _AudioControl/ *, public _AudioChannelsCluster* / {
 public:
 							EffectUnit(Device* device, size_t interface,
 								usb_audiocontrol_header_descriptor* Header);
 		virtual				~EffectUnit();
 
 protected:
-/*		uint16				fProcessType;
+/ *		uint16				fProcessType;
 		Vector<uint8>		fInputPins;
 		uint8				fControlsBitmap;
 		Vector<uint16>		fModes;
-*/};
+* /};
 
 
 class ProcessingUnit : public _AudioControl, public _AudioChannelsCluster {
@@ -245,13 +245,13 @@ public:
 		virtual				~SampleRateConverter();
 protected:
 };
-
+*/
 
 //
 // Audio Streaming Interface information entities
 //
 //
-class ASInterfaceDescriptor : public _AudioFunctionEntity {
+/*class ASInterfaceDescriptor : public _AudioFunctionEntity {
 public:
 							ASInterfaceDescriptor(Device* device, size_t interface,
 								usb_as_interface_descriptor_r1*	Descriptor);
@@ -261,8 +261,8 @@ public:
 		uint8				fDelay;
 		uint16				fFormatTag;
 };
-
-
+*/
+/*
 class ASEndpointDescriptor : public _AudioFunctionEntity {
 public:
 							ASEndpointDescriptor(Device* device, size_t interface,
@@ -273,8 +273,8 @@ public:
 		uint8				fLockDelayUnits;
 		uint16				fLockDelay;
 };
-
-
+*/
+/*
 class _ASFormatDescriptor : public _AudioFunctionEntity {
 public:
 							_ASFormatDescriptor(Device* device, size_t interface);
@@ -324,8 +324,8 @@ public:
 
 // protected:
 };
-
-
+*/
+/*
 class AudioStreamAlternate {
 public:
 						AudioStreamAlternate(size_t alternate,
@@ -344,6 +344,6 @@ protected:
 		ASEndpointDescriptor*	fEndpoint;
 		_ASFormatDescriptor*	fFormat;
 };
-
+*/
 #endif // _AUDIO_FUNCTION_H_
 

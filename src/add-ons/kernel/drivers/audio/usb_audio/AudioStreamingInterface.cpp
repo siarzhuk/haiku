@@ -41,7 +41,6 @@ static struct RatePair {
 ASInterfaceDescriptor::ASInterfaceDescriptor(/*Device* device, size_t interface,*/
 					usb_as_interface_descriptor_r1*	Descriptor)
 			:
-//			_AudioFunctionEntity(device, interface),
 			fTerminalLink(0),
 			fDelay(0),
 			fFormatTag(0)
@@ -102,7 +101,6 @@ ASEndpointDescriptor::~ASEndpointDescriptor()
 
 _ASFormatDescriptor::_ASFormatDescriptor(usb_type_I_format_descriptor* Descriptor)
 			:
-			/*_AudioFunctionEntity(device, interface)*/
 			fFormatType(UAF_FORMAT_TYPE_UNDEFINED)
 {
 	fFormatType = Descriptor->format_type;

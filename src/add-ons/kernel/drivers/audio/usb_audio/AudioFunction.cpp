@@ -10,7 +10,7 @@
 #include "Device.h"
 #include "audio.h"
 
-
+/*
 enum TerminalTypes {
 	// USB Terminal Types
 	UndefinedUSB_IO		= 0x100,
@@ -164,8 +164,8 @@ GetTerminalDescription(uint16 TerminalType)
 	TRACE_ALWAYS("Unknown Terminal Type: %#06x", TerminalType);
 	return "Unknown";
 }
-
-
+*/
+/*
 _AudioFunctionEntity::_AudioFunctionEntity(Device* device, size_t interface)
 			:
 			fStatus(B_NO_INIT),
@@ -178,9 +178,9 @@ _AudioFunctionEntity::_AudioFunctionEntity(Device* device, size_t interface)
 _AudioFunctionEntity::~_AudioFunctionEntity()
 {
 
-}
+}*/
 
-
+/*
 _AudioControl::_AudioControl(Device* device, size_t interface,
 					usb_audiocontrol_header_descriptor* Header)
 			:
@@ -212,8 +212,8 @@ _AudioControl::OutputCluster()
 
 	return control->OutputCluster();
 }
-
-
+*/
+/*
 AudioControlHeader::AudioControlHeader(Device* device, size_t interface,
 					usb_audiocontrol_header_descriptor* Header)
 			:
@@ -253,8 +253,8 @@ AudioControlHeader::~AudioControlHeader()
 {
 
 }
-
-
+*/
+/*
 _AudioChannelsCluster::_AudioChannelsCluster()
 			:
 			fOutChannelsNumber(0),
@@ -275,9 +275,9 @@ _AudioChannelsCluster*
 _AudioChannelsCluster::OutputCluster()
 {
 	return this;
-}
+*}*/
 
-
+/*
 _Terminal::_Terminal(Device* device, size_t interface,
 						usb_audiocontrol_header_descriptor* Header)
 			:
@@ -756,7 +756,7 @@ ProcessingUnit::ProcessingUnit(Device* device, size_t interface,
 	TRACE("Out channels number:%d\n",		fOutChannelsNumber);
 	TRACE("Out channels config:%#06x\n",	fChannelsConfig);
 	TRACE("Out channels names:%d\n",		fChannelNames);
-	/*
+	/ *
 	uint8 controlsSize = Processing->length - 10 - Processing->num_input_pins;
 	TRACE("Controls Size:%d\n", controlsSize);
 
@@ -770,7 +770,7 @@ ProcessingUnit::ProcessingUnit(Device* device, size_t interface,
 	fStringIndex = *(controlsData + controlsSize);
 
 	TRACE("StringIndex:%d\n", fStringIndex);
-*/
+* /
 	fStatus = B_OK;
 }
 
@@ -824,7 +824,7 @@ ExtensionUnit::ExtensionUnit(Device* device, size_t interface,
 	TRACE("Out channels number:%d\n",		fOutChannelsNumber);
 	TRACE("Out channels config:%#06x\n",	fChannelsConfig);
 	TRACE("Out channels names:%d\n",		fChannelNames);
-	/*
+	/ *
 	uint8 controlsSize = Processing->length - 10 - Processing->num_input_pins;
 	TRACE("Controls Size:%d\n", controlsSize);
 
@@ -838,7 +838,7 @@ ExtensionUnit::ExtensionUnit(Device* device, size_t interface,
 	fStringIndex = *(controlsData + controlsSize);
 
 	TRACE("StringIndex:%d\n", fStringIndex);
-*/
+* /
 	fStatus = B_OK;
 }
 
@@ -910,13 +910,13 @@ SampleRateConverter::SampleRateConverter(Device* device, size_t interface,
 SampleRateConverter::~SampleRateConverter()
 {
 }
-
+*/
 
 //
 // Audio Stream information entities
 //
 //
-ASInterfaceDescriptor::ASInterfaceDescriptor(Device* device, size_t interface,
+/*ASInterfaceDescriptor::ASInterfaceDescriptor(Device* device, size_t interface,
 					usb_as_interface_descriptor_r1*	Descriptor)
 			:
 			_AudioFunctionEntity(device, interface),
@@ -940,8 +940,8 @@ ASInterfaceDescriptor::~ASInterfaceDescriptor()
 {
 
 }
-
-
+*/
+/*
 ASEndpointDescriptor::ASEndpointDescriptor(Device* device, size_t interface,
 					usb_as_cs_endpoint_descriptor* Descriptor)
 			:
@@ -966,8 +966,8 @@ ASEndpointDescriptor::ASEndpointDescriptor(Device* device, size_t interface,
 ASEndpointDescriptor::~ASEndpointDescriptor()
 {
 }
-
-
+*/
+/*
 _ASFormatDescriptor::_ASFormatDescriptor(Device* device, size_t interface)
 			:
 			_AudioFunctionEntity(device, interface)
@@ -1068,8 +1068,8 @@ TypeIIIFormatDescriptor::TypeIIIFormatDescriptor(Device* device, size_t interfac
 TypeIIIFormatDescriptor::~TypeIIIFormatDescriptor()
 {
 }
-
-
+*/
+/*
 AudioStreamAlternate::AudioStreamAlternate(size_t alternate,
 					ASInterfaceDescriptor* interface,
 					ASEndpointDescriptor* endpoint,
@@ -1089,4 +1089,4 @@ AudioStreamAlternate::~AudioStreamAlternate()
 	delete fEndpoint;
 	delete fFormat;
 }
-
+*/

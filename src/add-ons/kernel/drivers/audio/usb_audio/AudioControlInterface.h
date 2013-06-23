@@ -156,7 +156,7 @@ virtual	const char*			Name();
 };
 
 
-class EffectUnit : public _AudioControl/*, public _AudioChannelsCluster*/ {
+class EffectUnit : public _AudioControl {
 public:
 							EffectUnit(AudioControlInterface* interface,
 								usb_audiocontrol_header_descriptor* Header);

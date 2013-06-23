@@ -19,9 +19,9 @@
 // Audio Streaming Interface information entities
 //
 //
-class ASInterfaceDescriptor /*: public _AudioFunctionEntity*/ {
+class ASInterfaceDescriptor {
 public:
-							ASInterfaceDescriptor(/*Device* device, size_t interface,*/
+							ASInterfaceDescriptor(
 								usb_as_interface_descriptor_r1*	Descriptor);
 							~ASInterfaceDescriptor();
 
@@ -32,7 +32,7 @@ public:
 };
 
 
-class ASEndpointDescriptor /*: public _AudioFunctionEntity*/ {
+class ASEndpointDescriptor {
 public:
 							ASEndpointDescriptor(
 								usb_endpoint_descriptor* Endpoint,
@@ -49,7 +49,7 @@ public:
 };
 
 
-class _ASFormatDescriptor /*: public _AudioFunctionEntity*/ {
+class _ASFormatDescriptor {
 public:
 							_ASFormatDescriptor(
 									usb_type_I_format_descriptor* Descriptor);
