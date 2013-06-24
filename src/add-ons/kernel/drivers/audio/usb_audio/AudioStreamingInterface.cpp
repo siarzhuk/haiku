@@ -457,14 +457,11 @@ AudioStreamingInterface::AudioStreamingInterface(
 
 AudioStreamingInterface::~AudioStreamingInterface()
 {
-		// alternates of the streams
-//		StreamAlternatesVector	fAlternates;
-//		size_t				fActiveAlternate;
 	// we own stream header objects too, so free them
-	for (StreamAlternatesIterator I = fAlternates.Begin();
-								I != fAlternates.End(); I++) {
+	for (Vector<AudioStreamAlternate*>::Iterator I = fAlternates.Begin();
+		I != fAlternates.End(); I++)
 		delete *I;
-	}
+
 	fAlternates.MakeEmpty();
 }
 

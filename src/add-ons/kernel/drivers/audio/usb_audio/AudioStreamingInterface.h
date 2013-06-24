@@ -63,7 +63,7 @@ public:
 
 class TypeIFormatDescriptor : public _ASFormatDescriptor {
 public:
-							TypeIFormatDescriptor(/*Device* device, size_t interface,*/ 
+							TypeIFormatDescriptor(
 								usb_type_I_format_descriptor* Descriptor);
 		virtual				~TypeIFormatDescriptor();
 
@@ -80,7 +80,7 @@ public:
 
 class TypeIIFormatDescriptor : public _ASFormatDescriptor {
 public:
-							TypeIIFormatDescriptor(/*Device* device, size_t interface,*/ 
+							TypeIIFormatDescriptor(
 								usb_type_II_format_descriptor* Descriptor);
 		virtual				~TypeIIFormatDescriptor();
 
@@ -94,7 +94,7 @@ public:
 
 class TypeIIIFormatDescriptor : public TypeIFormatDescriptor {
 public:
-							TypeIIIFormatDescriptor(/*Device* device, size_t interface, */
+							TypeIIIFormatDescriptor(
 								usb_type_III_format_descriptor* Descriptor);
 		virtual				~TypeIIIFormatDescriptor();
 
@@ -133,10 +133,6 @@ protected:
 };
 
 
-typedef	Vector<AudioStreamAlternate*>			StreamAlternatesVector;
-typedef	Vector<AudioStreamAlternate*>::Iterator	StreamAlternatesIterator;
-
-
 class AudioStreamingInterface {
 public:
 						AudioStreamingInterface(
@@ -159,7 +155,7 @@ protected:
 	//	status_t			fStatus;
 		bool			fIsInput;
 		// alternates of the streams
-		StreamAlternatesVector	fAlternates;
+		Vector<AudioStreamAlternate*>	fAlternates;
 		size_t				fActiveAlternate;
 };
 

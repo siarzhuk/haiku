@@ -14,15 +14,11 @@
 
 class Device;
 
-// typedef	Vector<AudioStreamAlternate*>			StreamAlternatesVector;
-// typedef	Vector<AudioStreamAlternate*>::Iterator	StreamAlternatesIterator;
-
 class Stream : public AudioStreamingInterface {
 		friend		class	Device;
 public:
 							Stream(Device* device, size_t interface,
-								usb_interface_list *List
-								/*, bool isInput, uint32 HWChannel*/);
+								usb_interface_list *List);
 							~Stream();
 		status_t			Init();
 		status_t			InitCheck() { return fStatus; }

@@ -9,10 +9,7 @@
 
 
 #include <Drivers.h>
-#include <KernelExport.h>
-#include <OS.h>
 #include <USB3.h>
-#include <hmulti_audio.h>
 
 
 #define DRIVER_NAME	"usb_audio"
@@ -33,16 +30,16 @@ const uint32 kSamplesBufferCount = 2;
 #define _countof(array)(sizeof(array) / sizeof(array[0]))
 
 
-extern usb_module_info *gUSBModule;
+extern usb_module_info* gUSBModule;
 
-extern "C" status_t usb_audio_device_added(usb_device device, void **cookie);
-extern "C" status_t usb_audio_device_removed(void *cookie);
+extern "C" status_t usb_audio_device_added(usb_device device, void** cookie);
+extern "C" status_t usb_audio_device_removed(void* cookie);
 
 extern "C" status_t init_hardware();
 extern "C" void uninit_driver();
 
-extern "C" const char **publish_devices();
-extern "C" device_hooks *find_device(const char *name);
+extern "C" const char** publish_devices();
+extern "C" device_hooks *find_device(const char* name);
 
 
 #endif // _USB_AUDIO_DRIVER_H_

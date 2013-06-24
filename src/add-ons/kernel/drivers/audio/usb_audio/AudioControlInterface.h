@@ -12,6 +12,7 @@
 
 #include "Driver.h"
 #include "USB_audio_spec.h"
+#include <hmulti_audio.h>
 
 
 class AudioControlInterface;
