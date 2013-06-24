@@ -19,17 +19,17 @@ Device::Device(usb_device device)
 			fStatus(B_ERROR),
 			fOpen(false),
 			fRemoved(false),
-			fInsideNotify(0),
+//			fInsideNotify(0),
 			fDevice(device),
 			fNonBlocking(false),
 			fAudioControl(this),
 		//	fControlEndpoint(0),
 		//	fInStreamEndpoint(0),
 		//	fOutStreamEndpoint(0),
-			fNotifyReadSem(-1),
-			fNotifyWriteSem(-1),
-			fNotifyBuffer(NULL),
-			fNotifyBufferLength(0),
+		//	fNotifyReadSem(-1),
+		//	fNotifyWriteSem(-1),
+		//	fNotifyBuffer(NULL),
+		//	fNotifyBufferLength(0),
 			fBuffersReadySem(-1)
 {
 	const usb_device_descriptor* deviceDescriptor
@@ -44,20 +44,20 @@ Device::Device(usb_device device)
 	fProductID = deviceDescriptor->product_id;
 	fUSBVersion = deviceDescriptor->usb_version;
 
-	fNotifyReadSem = create_sem(0, DRIVER_NAME"_notify_read");
+/*	fNotifyReadSem = create_sem(0, DRIVER_NAME"_notify_read");
 	if (fNotifyReadSem < B_OK) {
 		TRACE_ALWAYS("Error of creating read notify semaphore:%#010x\n",
 															fNotifyReadSem);
 		return;
-	}
-
+	} */
+/*
 	fNotifyWriteSem = create_sem(0, DRIVER_NAME"_notify_write");
 	if (fNotifyWriteSem < B_OK) {
 		TRACE_ALWAYS("Error of creating write notify semaphore:%#010x\n",
 															fNotifyWriteSem);
 		return;
 	}
-
+*/
 	fBuffersReadySem = create_sem(0, DRIVER_NAME "_buffers_ready");
 	if (fBuffersReadySem < B_OK) {
 		TRACE_ALWAYS("Error of creating ready buffers semaphore:%#010x\n",
@@ -91,25 +91,27 @@ Device::~Device()
 	fInputTerminals.MakeEmpty();
 */
 	// free stream objects too.
-	for (AudioStreamsIterator I = fStreams.Begin();
-								I != fStreams.End(); I++) {
+	
+	for (Vector<Stream*>::Iterator I = fStreams.Begin();
+		I != fStreams.End(); I++)
 		delete *I;
-	}
+
 	fStreams.MakeEmpty();
 
-	if (fNotifyReadSem >= B_OK)
-		delete_sem(fNotifyReadSem);
+/*	if (fNotifyReadSem >= B_OK)
+		delete_sem(fNotifyReadSem);*/
+/*
 	if (fNotifyWriteSem >= B_OK)
 		delete_sem(fNotifyWriteSem);
-
+*/
 	if (fBuffersReadySem > B_OK)
 		delete_sem(fBuffersReadySem);
 
 //	if (!fRemoved) // ???
 //		gUSBModule->cancel_queued_transfers(fNotifyEndpoint);
 
-	if (fNotifyBuffer)
-		free(fNotifyBuffer);
+/*	if (fNotifyBuffer)
+		free(fNotifyBuffer);*/
 }
 
 
@@ -154,8 +156,8 @@ Device::Close()
 	}
 
 	// wait until possible notification handling finished...
-	while (atomic_add(&fInsideNotify, 0) != 0)
-		snooze(100);
+//	while (atomic_add(&fInsideNotify, 0) != 0)
+//		snooze(100);
 //	gUSBModule->cancel_queued_transfers(fControlEndpoint);
 //	gUSBModule->cancel_queued_transfers(fInStreamEndpoint);
 //	gUSBModule->cancel_queued_transfers(fOutStreamEndpoint);
@@ -287,8 +289,9 @@ Device::Removed()
 	// case) - so we must ensure that we are not inside the notify hook anymore
 	// before returning, as we would otherwise violate the promise not to use
 	// any of the pipes after returning from the removed hook
-	while (atomic_add(&fInsideNotify, 0) != 0)
-		snooze(100);
+// TODO?????? 
+//	while (atomic_add(&fInsideNotify, 0) != 0)
+//		snooze(100);
 
 //	gUSBModule->cancel_queued_transfers(fControlEndpoint);
 //	gUSBModule->cancel_queued_transfers(fInStreamEndpoint);
@@ -737,7 +740,7 @@ Device::StopDevice()
 }
 
 
-void
+/*void
 Device::_ReadCallback(void *cookie, int32 status, void *data,
 	uint32 actualLength)
 {
@@ -772,14 +775,14 @@ Device::_NotifyCallback(void *cookie, int32 status, void *data,
 		return;
 	}
 
-/*	if (status != B_OK) {
+/ *	if (status != B_OK) {
 		TRACE_ALWAYS("Device status error:%#010x\n", status);
 		status_t result = gUSBModule->clear_feature(device->fControLeNDPOint,
 													USB_FEATURE_ENDPOINT_HALT);
 		if (result != B_OK)
 			TRACE_ALWAYS("Error during clearing of HALT state:%#010x.\n", result);
 	}
-*/
+* /
 	// parse data in overriden class
 //	device->OnNotify(actualLength);
 
@@ -788,4 +791,4 @@ Device::_NotifyCallback(void *cookie, int32 status, void *data,
 //		device->fNotifyBufferLength, _NotifyCallback, device);
 	atomic_add(&device->fInsideNotify, -1);
 }
-
+*/

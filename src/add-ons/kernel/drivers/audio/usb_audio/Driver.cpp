@@ -1,24 +1,24 @@
 /*
  *	Driver for USB Audio Device Class devices.
- *	Copyright (c) 2009,10,12 S.Zharski <imker@gmx.li>
+ *	Copyright (c) 2009 - 13 S.Zharski <imker@gmx.li>
  *	Distributed under the terms of the MIT license.
  *
  */
+
+#include "Driver.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <lock.h> // for mutex
+#include <lock.h>
 
-#include "Driver.h"
-#include "Settings.h"
 #include "Device.h"
+#include "Settings.h"
 #include "USB_audio_spec.h"
 
 
 int32 api_version = B_CUR_DRIVER_API_VERSION;
-
 
 static const char *sDeviceBaseName = "audio/hmulti/USB Audio/";
 Device *gDevices[MAX_DEVICES];
@@ -29,7 +29,7 @@ usb_module_info *gUSBModule = NULL;
 
 mutex gDriverLock;
 // auto - release helper class
-class DriverSmartLock {
+class DriverSmartLock { // TODO: Replace with MutexLock!
 public:
 	DriverSmartLock()	{ mutex_lock(&gDriverLock);		}
 	~DriverSmartLock()	{ mutex_unlock(&gDriverLock);	}
@@ -96,7 +96,7 @@ usb_audio_device_added(usb_device device, void **cookie)
 status_t
 usb_audio_device_removed(void *cookie)
 {
-	DriverSmartLock driverLock; // released on exit
+	DriverSmartLock driverLock;
 
 	Device *device = (Device *)cookie;
 	for (int32 i = 0; i < MAX_DEVICES; i++) {
@@ -148,7 +148,7 @@ init_driver()
 	};
 
 	static usb_support_descriptor supportedDevices[] = {
-		{UAS_AUDIO, 0, 0, 0, 0 }
+		{ UAS_AUDIO, 0, 0, 0, 0 }
 	};
 
 	gUSBModule->register_driver(DRIVER_NAME, supportedDevices, 0, NULL);
@@ -185,7 +185,7 @@ uninit_driver()
 static status_t
 usb_audio_open(const char *name, uint32 flags, void **cookie)
 {
-	DriverSmartLock driverLock; // released on exit
+	DriverSmartLock driverLock;
 
 	*cookie = NULL;
 	status_t status = ENODEV;
@@ -237,7 +237,7 @@ usb_audio_free(void *cookie)
 {
 	Device *device = (Device *)cookie;
 
-	DriverSmartLock driverLock; // released on exit
+	DriverSmartLock driverLock;
 
 	status_t status = device->Free();
 	for (int32 i = 0; i < MAX_DEVICES; i++) {
@@ -263,7 +263,7 @@ publish_devices()
 		gDeviceNames[i] = NULL;
 	}
 
-	DriverSmartLock driverLock; // released on exit
+	DriverSmartLock driverLock;
 
 	int32 deviceCount = 0;
 	for (int32 i = 0; i < MAX_DEVICES; i++) {
@@ -294,8 +294,8 @@ find_device(const char *name)
 		usb_audio_control,
 		usb_audio_read,
 		usb_audio_write,
-		NULL,				/* select */
-		NULL				/* deselect */
+		NULL,				// select
+		NULL				// deselect
 	};
 
 	return &deviceHooks;
