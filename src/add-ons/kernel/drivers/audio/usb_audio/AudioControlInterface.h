@@ -313,5 +313,6 @@ protected:
 			AudioControlsMap	fInputTerminals;
 };
 
+
 #endif // _AUDIO_CONTROL_INTERFACE_H_
 

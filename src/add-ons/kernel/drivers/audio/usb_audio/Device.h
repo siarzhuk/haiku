@@ -1,6 +1,6 @@
 /*
  *	Driver for USB Audio Device Class devices.
- *	Copyright (c) 2009,10,12 S.Zharski <imker@gmx.li>
+ *	Copyright (c) 2009-13 S.Zharski <imker@gmx.li>
  *	Distributed under the terms of the MIT license.
  *
  */

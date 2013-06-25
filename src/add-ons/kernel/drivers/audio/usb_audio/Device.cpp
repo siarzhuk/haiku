@@ -1,14 +1,12 @@
 /*
  *	Driver for USB Audio Device Class devices.
- *	Copyright (c) 2009,10,12 S.Zharski <imker@gmx.li>
+ *	Copyright (c) 2009-13 S.Zharski <imker@gmx.li>
  *	Distributed under the terms of the MIT license.
  *
  */
 
 
 #include "Device.h"
-
-#include <malloc.h>
 
 #include "Driver.h"
 #include "Settings.h"
@@ -39,8 +37,8 @@ Device::Device(usb_device device)
 
 	fBuffersReadySem = create_sem(0, DRIVER_NAME "_buffers_ready");
 	if (fBuffersReadySem < B_OK) {
-		TRACE_ALWAYS("Error of creating ready buffers semaphore:%#010x\n",
-															fBuffersReadySem);
+		TRACE_ALWAYS("Error of creating ready "
+			"buffers semaphore:%#010x\n", fBuffersReadySem);
 		return;
 	}
 
@@ -54,36 +52,14 @@ Device::Device(usb_device device)
 
 Device::~Device()
 {
-	// we have to clear because we own those objects here
-/*
-	for (AudioControlsIterator I = fAudioControls.Begin();
-								I != fAudioControls.End(); I++) {
-		delete I->Value();
-	}
-	fAudioControls.MakeEmpty();
-
-	// object already freed. just purge the map
-	fOutputTerminals.MakeEmpty();
-
-	// object already freed. just purge the map
-	fInputTerminals.MakeEmpty();
-*/
-	// free stream objects too.
-
 	for (Vector<Stream*>::Iterator I = fStreams.Begin();
-		I != fStreams.End(); I++)
+			I != fStreams.End(); I++)
 		delete *I;
 
 	fStreams.MakeEmpty();
 
 	if (fBuffersReadySem > B_OK)
 		delete_sem(fBuffersReadySem);
-
-//	if (!fRemoved) // ???
-//		gUSBModule->cancel_queued_transfers(fNotifyEndpoint);
-
-/*	if (fNotifyBuffer)
-		free(fNotifyBuffer);*/
 }
 
 
@@ -193,10 +169,10 @@ Device::Control(uint32 op, void* buffer, size_t length)
 			return B_ERROR;
 
 		case B_MULTI_GET_MIX:
-			return _MultiGetMix((multi_mix_value_info *)buffer);
+			return _MultiGetMix((multi_mix_value_info*)buffer);
 
 		case B_MULTI_SET_MIX:
-			return _MultiSetMix((multi_mix_value_info *)buffer);
+			return _MultiSetMix((multi_mix_value_info*)buffer);
 
 		case B_MULTI_LIST_MIX_CHANNELS:
 			TRACE(("B_MULTI_LIST_MIX_CHANNELS\n"));
@@ -257,10 +233,6 @@ Device::Removed()
 //	gUSBModule->cancel_queued_transfers(fControlEndpoint);
 //	gUSBModule->cancel_queued_transfers(fInStreamEndpoint);
 //	gUSBModule->cancel_queued_transfers(fOutStreamEndpoint);
-/*
-	if (fLinkStateChangeSem >= B_OK)
-		release_sem_etc(fLinkStateChangeSem, 1, B_DO_NOT_RESCHEDULE);
-*/
 }
 
 
@@ -317,7 +289,7 @@ Device::_MultiGetDescription(multi_description* multiDescription)
 {
 	multi_description Description;
 	if (user_memcpy(&Description, multiDescription,
-		sizeof(multi_description)) != B_OK)
+			sizeof(multi_description)) != B_OK)
 		return B_BAD_ADDRESS;
 
 	Description.interface_version = B_CURRENT_INTERFACE_VERSION;
@@ -367,22 +339,21 @@ Device::_MultiGetDescription(multi_description* multiDescription)
 		// }
 	}
 
-	// int32 index = 0;
 	Vector<multi_channel_info> Channels;
-	/*uint32 channels =*/ fAudioControl.GetChannelsDescription(Channels, &Description, USBTerminals);
-	/*uint32 bus_channels =*/ fAudioControl.GetBusChannelsDescription(Channels, &Description );
+	fAudioControl.GetChannelsDescription(Channels, &Description, USBTerminals);
+	fAudioControl.GetBusChannelsDescription(Channels, &Description );
 
 	// Description.request_channel_count = channels + bus_channels;
 
 	TraceMultiDescription(&Description, Channels);
 
 	if (user_memcpy(multiDescription, &Description,
-		sizeof(multi_description)) != B_OK)
+			sizeof(multi_description)) != B_OK)
 		return B_BAD_ADDRESS;
 
 	if (user_memcpy(multiDescription->channels,
-		&Channels[0], min_c(Channels.Count(),
-		Description.request_channel_count)) != B_OK)
+			&Channels[0], min_c(Channels.Count(),
+			Description.request_channel_count)) != B_OK)
 		return B_BAD_ADDRESS;
 
 	return B_OK;
@@ -530,11 +501,6 @@ Device::_MultiBufferExchange(multi_buffer_info* multiInfo)
 		if (!fStreams[i]->IsRunning())
 			fStreams[i]->Start();
 
-//	TRACE_ALWAYS("Exchange!\n");
-/*
-	snooze(1000000);
-	return B_OK;
-*/
 	status_t status = B_ERROR;
 	bool anyBufferProcessed = false;
 	for (int i = 0; i < fStreams.Count() && !anyBufferProcessed; i++) {
@@ -625,9 +591,8 @@ Device::_SetupEndpoints()
 
 	for (size_t i = 0; i < config->interface_count; i++) {
 		usb_interface_info* Interface = config->interface[i].active;
-		if (Interface->descr->interface_class != UAS_AUDIO) {
+		if (Interface->descr->interface_class != UAS_AUDIO)
 			continue;
-		}
 
 		switch (Interface->descr->interface_subclass) {
 			case UAS_AUDIOCONTROL:
@@ -682,10 +647,10 @@ Device::StopDevice()
 
 
 /*void
-Device::_NotifyCallback(void *cookie, int32 status, void *data,
+Device::_NotifyCallback(void* cookie, int32 status, void* data,
 	uint32 actualLength)
 {
-	Device *device = (Device *)cookie;
+	Device* device = (Device*)cookie;
 	atomic_add(&device->fInsideNotify, 1);
 	if (status == B_CANCELED || device->fRemoved) {
 		atomic_add(&device->fInsideNotify, -1);

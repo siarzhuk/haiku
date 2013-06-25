@@ -1,6 +1,6 @@
 /*
  *	Driver for USB Audio Device Class devices.
- *	Copyright (c) 2009,10,12 S.Zharski <imker@gmx.li>
+ *	Copyright (c) 2009-13 S.Zharski <imker@gmx.li>
  *	Distributed under the terms of the MIT license.
  *
  */
@@ -131,28 +131,28 @@ protected:
 
 class AudioStreamingInterface {
 public:
-							AudioStreamingInterface(
-								AudioControlInterface*	controlInterface,
-								size_t interface, usb_interface_list* List);
-							~AudioStreamingInterface();
+								AudioStreamingInterface(
+									AudioControlInterface*	controlInterface,
+									size_t interface, usb_interface_list* List);
+								~AudioStreamingInterface();
 
-	//		status_t		InitCheck() { return fStatus; }
-			uint8			TerminalLink();
-			bool			IsInput() { return fIsInput; }
+	//		status_t			InitCheck() { return fStatus; }
+			uint8				TerminalLink();
+			bool				IsInput() { return fIsInput; }
 
 			AudioChannelCluster* ChannelCluster();
 
-			void			GetFormatsAndRates(multi_description* Description);
-
+			void				GetFormatsAndRates(
+									multi_description* Description);
 protected:
-			size_t			fInterface;
+			size_t				fInterface;
 			AudioControlInterface*	fControlInterface;
 
-	//		status_t		fStatus;
-			bool			fIsInput;
+	//		status_t			fStatus;
+			bool				fIsInput;
 		// alternates of the streams
 			Vector<AudioStreamAlternate*>	fAlternates;
-			size_t			fActiveAlternate;
+			size_t				fActiveAlternate;
 };
 
 

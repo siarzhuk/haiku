@@ -1,6 +1,6 @@
 /*
  *	Driver for USB Audio Device Class devices.
- *	Copyright (c) 2009,10,12 S.Zharski <imker@gmx.li>
+ *	Copyright (c) 2009-13 S.Zharski <imker@gmx.li>
  *	Distributed under the tems of the MIT license.
  *
  */
@@ -546,7 +546,6 @@ FeatureUnit::Name()
 	// first check if source of this FU is an input terminal
 	_AudioControl* control = fInterface->Find(fSourceID);
 	while (control != 0) {
-
 		if (control->SubType() != IDSInputTerminal)
 			break;
 
@@ -561,7 +560,6 @@ FeatureUnit::Name()
 	// check if output of this FU is connected to output terminal
 	control = fInterface->FindOutputTerminal(fID);
 	while (control != 0) {
-
 		if (control->SubType() != IDSOutputTerminal)
 			break;
 
@@ -1125,7 +1123,6 @@ AudioControlInterface::GetBusChannelsDescription(
 	// first iterate output channels
 	for (AudioControlsIterator I = fOutputTerminals.Begin();
 			I != fOutputTerminals.End(); I++) {
-
 		_AudioControl* control = I->Value();
 		if (static_cast<_Terminal*>(control)->IsUSBIO())
 			continue;
@@ -1147,7 +1144,6 @@ AudioControlInterface::GetBusChannelsDescription(
 	// output channels should follow too
 	for (AudioControlsIterator I = fInputTerminals.Begin();
 			I != fInputTerminals.End(); I++) {
-
 		_AudioControl* control = I->Value();
 		if (static_cast<_Terminal*>(control)->IsUSBIO())
 			continue;
@@ -1277,11 +1273,11 @@ AudioControlInterface::_ListFeatureUnitOption(uint32 controlType,
 	multi_mix_control* Controls = Info->controls;
 
 	if (unit->HasControl(channel, controlType)) {
-		uint32 masterIndex
-			= Controls[index].id = CTL_ID(id, channel, unit->ID(), fInterface);
-		Controls[index].flags	 = flags;
-		Controls[index].parent	 = parentIndex;
-		Controls[index].string	 = string;
+		uint32 masterIndex = CTL_ID(id, channel, unit->ID(), fInterface);
+		Controls[index].id  = masterIndex;
+		Controls[index].flags = flags;
+		Controls[index].parent = parentIndex;
+		Controls[index].string = string;
 		if (name != NULL)
 			strlcpy(Controls[index].name, name, sizeof(Controls[index].name));
 		if (initGainLimits)
@@ -1290,15 +1286,13 @@ AudioControlInterface::_ListFeatureUnitOption(uint32 controlType,
 		index++;
 
 		if (channels == 2) {
-			Controls[index].id		= CTL_ID(id, channel + 1,
-														unit->ID(), fInterface);
-			Controls[index].flags	= flags;
-			Controls[index].parent	= parentIndex;
-			Controls[index].master	= masterIndex;
-			Controls[index].string	= string;
+			Controls[index].id = CTL_ID(id, channel + 1, unit->ID(), fInterface);
+			Controls[index].flags = flags;
+			Controls[index].parent = parentIndex;
+			Controls[index].master = masterIndex;
+			Controls[index].string = string;
 			if (name != NULL)
-				strlcpy(Controls[index].name, name,
-												sizeof(Controls[index].name));
+				strlcpy(Controls[index].name, name, sizeof(Controls[index].name));
 			if (initGainLimits)
 				_InitGainLimits(Controls[index]);
 			index++;
@@ -1372,12 +1366,12 @@ AudioControlInterface::_ListFeatureUnitControl(int32& index, int32 parentIndex,
 		}
 
 		if (masterIndex == 0) {
-			groupIndex
-				= Controls[index].id	= index;
-			Controls[index].flags		= B_MULTI_MIX_GROUP;
-			Controls[index].parent		= parentIndex;
+			groupIndex = index;
+			Controls[index].id = groupIndex;
+			Controls[index].flags = B_MULTI_MIX_GROUP;
+			Controls[index].parent = parentIndex;
 			snprintf(Controls[index].name, sizeof(Controls[index].name),
-								"%s %s", unit->Name(), channelInfos[i].Name);
+				"%s %s", unit->Name(), channelInfos[i].Name);
 			index++;
 		} else {
 			groupIndex = masterIndex;
@@ -1386,19 +1380,18 @@ AudioControlInterface::_ListFeatureUnitControl(int32& index, int32 parentIndex,
 
 		// First list possible Mute controls
 		_ListFeatureUnitOption(MuteControl, index, groupIndex, Info,
-										unit, channel, channelInfos[i].channels);
+				unit, channel, channelInfos[i].channels);
 
 		// Gain controls may be usefull too
 		if (_ListFeatureUnitOption(VolumeControl, index, groupIndex, Info,
-								unit, channel, channelInfos[i].channels) == 0)
-		{
+				unit, channel, channelInfos[i].channels) == 0) {
 			masterIndex = (i == 0) ? groupIndex : 0 ;
 			TRACE("channel:%d set master index to %d\n", channel, masterIndex);
 		}
 
 		// Auto Gain checkbox will be listed too
 		_ListFeatureUnitOption(AutoGainControl, index, groupIndex, Info,
-										unit, channel, channelInfos[i].channels);
+			unit, channel, channelInfos[i].channels);
 
 		// Now check if the group filled with something usefull.
 		// In case no controls were added into it - "remove" it
@@ -1439,20 +1432,20 @@ AudioControlInterface::_ListSelectorUnitControl(int32& index, int32 parentGroup,
 
 	multi_mix_control* Controls = Info->controls;
 
-	int32 recordMUX
-		= Controls[index].id	= CTL_ID(0, 0, selector->ID(), fInterface);
-	Controls[index].flags		= B_MULTI_MIX_MUX;
-	Controls[index].parent		= parentGroup;
-	Controls[index].string		= S_null;
+	int32 recordMUX = CTL_ID(0, 0, selector->ID(), fInterface);
+	Controls[index].id	= recordMUX;
+	Controls[index].flags = B_MULTI_MIX_MUX;
+	Controls[index].parent = parentGroup;
+	Controls[index].string = S_null;
 	strlcpy(Controls[index].name, "Source", sizeof(Controls[index].name));
 	index++;
 
 	for (int i = 0; i < selector->fInputPins.Count(); i++) {
-		Controls[index].id		= CTL_ID(0, 1, selector->ID(), fInterface);
-		Controls[index].flags	= B_MULTI_MIX_MUX_VALUE;
-		Controls[index].master	= 0;
-		Controls[index].string	= S_null;
-		Controls[index].parent	= recordMUX;
+		Controls[index].id = CTL_ID(0, 1, selector->ID(), fInterface);
+		Controls[index].flags = B_MULTI_MIX_MUX_VALUE;
+		Controls[index].master = 0;
+		Controls[index].string = S_null;
+		Controls[index].parent = recordMUX;
 		_AudioControl* control = Find(selector->fInputPins[i]);
 		if (control != NULL)
 			strlcpy(Controls[index].name,
@@ -1470,10 +1463,10 @@ AudioControlInterface::_ListMixControlsPage(int32& index,
 		multi_mix_control_info* Info, AudioControlsMap& Map, const char* Name)
 {
 	multi_mix_control* Controls = Info->controls;
-	int32 groupIndex
-		= Controls[index].id	= index | 0x10000;
-	Controls[index].flags		= B_MULTI_MIX_GROUP;
-	Controls[index].parent		= 0;
+	int32 groupIndex = index | 0x10000;
+	Controls[index].id	= groupIndex;
+	Controls[index].flags = B_MULTI_MIX_GROUP;
+	Controls[index].parent = 0;
 	strlcpy(Controls[index].name, Name, sizeof(Controls[index].name));
 	index++;
 
