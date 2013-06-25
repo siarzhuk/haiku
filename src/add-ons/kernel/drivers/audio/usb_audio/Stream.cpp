@@ -12,23 +12,22 @@
 #include "Settings.h"
 
 
-Stream::Stream(Device *device, size_t interface, usb_interface_list *List
-										/*, bool isInput, uint32 HWChannel*/)
-			:
-			AudioStreamingInterface(&device->AudioControl(), interface, List),
-			fDevice(device),
-			fStatus(B_NO_INIT),
-			fStreamEndpoint(0),
-			fIsRunning(false),
-			fArea(-1),
-			fAreaSize(0),
-			fDescriptors(NULL),
-			fDescriptorsCount(0),
-			fCurrentBuffer(0),
-			fStartingFrame(0),
-			fSamplesCount(0),
-			fPacketSize(0),
-			fProcessedBuffers(0)
+Stream::Stream(Device* device, size_t interface, usb_interface_list* List)
+	:
+	AudioStreamingInterface(&device->AudioControl(), interface, List),
+	fDevice(device),
+	fStatus(B_NO_INIT),
+	fStreamEndpoint(0),
+	fIsRunning(false),
+	fArea(-1),
+	fAreaSize(0),
+	fDescriptors(NULL),
+	fDescriptorsCount(0),
+	fCurrentBuffer(0),
+	fStartingFrame(0),
+	fSamplesCount(0),
+	fPacketSize(0),
+	fProcessedBuffers(0)
 {
 	memset(&fFormat, 0, sizeof(_multi_format));
 }
@@ -197,7 +196,7 @@ Stream::_SetupBuffers()
 
 status_t
 Stream::OnSetConfiguration(usb_device device,
-								const usb_configuration_info *config)
+								const usb_configuration_info* config)
 {
 	if (config == NULL) {
 		TRACE_ALWAYS("NULL configuration. Not set.\n");
@@ -325,7 +324,7 @@ Stream::_QueueNextTransfer(size_t queuedBuffer, bool start)
 
 
 void
-Stream::_TransferCallback(void *cookie, int32 status, void *data,
+Stream::_TransferCallback(void* cookie, int32 status, void* data,
 	uint32 actualLength)
 {
 	if (status == B_CANCELED) {
@@ -334,7 +333,7 @@ Stream::_TransferCallback(void *cookie, int32 status, void *data,
 		return;
 	}
 
-	Stream *stream = (Stream *)cookie;
+	Stream* stream = (Stream*)cookie;
 	
 	stream->fCurrentBuffer = (stream->fCurrentBuffer + 1) % kSamplesBufferCount;
 
@@ -368,7 +367,7 @@ Stream::_DumpDescriptors()
 
 
 status_t
-Stream::GetEnabledChannels(uint32& offset, multi_channel_enable *Enable)
+Stream::GetEnabledChannels(uint32& offset, multi_channel_enable* Enable)
 {
 	AudioChannelCluster* cluster = ChannelCluster();
 	if (cluster == 0) {
@@ -385,7 +384,7 @@ Stream::GetEnabledChannels(uint32& offset, multi_channel_enable *Enable)
 
 
 status_t
-Stream::SetEnabledChannels(uint32& offset, multi_channel_enable *Enable)
+Stream::SetEnabledChannels(uint32& offset, multi_channel_enable* Enable)
 {
 	AudioChannelCluster* cluster = ChannelCluster();
 	if (cluster == 0) {
@@ -402,7 +401,7 @@ Stream::SetEnabledChannels(uint32& offset, multi_channel_enable *Enable)
 
 
 status_t
-Stream::GetGlobalFormat(multi_format_info *Format)
+Stream::GetGlobalFormat(multi_format_info* Format)
 {
 	_multi_format* format = fIsInput ? &Format->input : &Format->output;
 	format->cvsr = fAlternates[fActiveAlternate]->GetSamplingRate();
@@ -416,7 +415,7 @@ Stream::GetGlobalFormat(multi_format_info *Format)
 
 
 status_t
-Stream::SetGlobalFormat(multi_format_info *Format)
+Stream::SetGlobalFormat(multi_format_info* Format)
 {
 	_multi_format* format = fIsInput ? &Format->input : &Format->output;
 	AudioStreamAlternate* alternate = fAlternates[fActiveAlternate];

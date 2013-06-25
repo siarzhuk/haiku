@@ -6,8 +6,11 @@
  */
 
 #include "AudioStreamingInterface.h"
-#include "Settings.h"
+
+
 #include "Device.h"
+#include "Driver.h"
+#include "Settings.h"
 #include "audio.h"
 
 

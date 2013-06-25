@@ -6,9 +6,11 @@
  */
 
 #include "AudioControlInterface.h"
-#include "Settings.h"
-#include "Device.h"
+
 #include "audio.h"
+#include "Device.h"
+#include "Driver.h"
+#include "Settings.h"
 
 
 enum TerminalTypes {
@@ -185,14 +187,14 @@ GetTerminalDescription(uint16 TerminalType)
 
 
 _AudioControl::_AudioControl(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			fStatus(B_NO_INIT),
-			fInterface(interface),
-			fSubType(Header->descriptor_subtype),
-			fID(0),
-			fSourceID(0),
-			fStringIndex(0)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	fStatus(B_NO_INIT),
+	fInterface(interface),
+	fSubType(Header->descriptor_subtype),
+	fID(0),
+	fSourceID(0),
+	fStringIndex(0)
 {
 }
 
@@ -205,51 +207,45 @@ _AudioControl::~_AudioControl()
 AudioChannelCluster*
 _AudioControl::OutCluster()
 {
-	if (SourceID() == 0 || fInterface == NULL) {
+	if (SourceID() == 0 || fInterface == NULL)
 		return NULL;
-	}
 
 	_AudioControl* control = fInterface->Find(SourceID());
-	if (control == NULL) {
+	if (control == NULL)
 		return NULL;
-	}
 
 	return control->OutCluster();
 }
 
 
 AudioChannelCluster::AudioChannelCluster()
-			:
-			fOutChannelsNumber(0),
-			fChannelsConfig(0),
-			fChannelNames(0)
+	:
+	fOutChannelsNumber(0),
+	fChannelsConfig(0),
+	fChannelNames(0)
 {
-
 }
 
 
 AudioChannelCluster::~AudioChannelCluster()
 {
-
 }
 
 
 _Terminal::_Terminal(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_AudioControl(interface, Header),
-			fTerminalType(0),
-			fAssociatedTerminal(0),
-			fClockSourceId(0),
-			fControlsBitmap(0)
+	usb_audiocontrol_header_descriptor* Header)
+	:
+	_AudioControl(interface, Header),
+	fTerminalType(0),
+	fAssociatedTerminal(0),
+	fClockSourceId(0),
+	fControlsBitmap(0)
 {
-
 }
 
 
 _Terminal::~_Terminal()
 {
-
 }
 
 
@@ -268,9 +264,9 @@ _Terminal::IsUSBIO()
 
 
 InputTerminal::InputTerminal(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_AudioChannelCluster<_Terminal>(interface, Header)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	_AudioChannelCluster<_Terminal>(interface, Header)
 {
 	usb_input_terminal_descriptor_r1* Terminal
 		= (usb_input_terminal_descriptor_r1*) Header;
@@ -280,7 +276,7 @@ InputTerminal::InputTerminal(AudioControlInterface*	interface,
 
 	TRACE("Input Terminal ID:%d >>>\n",	fID);
 	TRACE("Terminal type:%s (%#06x)\n",
-				GetTerminalDescription(fTerminalType), fTerminalType);
+		GetTerminalDescription(fTerminalType), fTerminalType);
 	TRACE("Assoc.terminal:%d\n",	fAssociatedTerminal);
 
 	if (fInterface->SpecReleaseNumber() < 0x200) {
@@ -317,9 +313,9 @@ InputTerminal::~InputTerminal()
 
 
 OutputTerminal::OutputTerminal(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_Terminal(interface, Header)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	_Terminal(interface, Header)
 {
 	usb_output_terminal_descriptor_r1* Terminal
 		= (usb_output_terminal_descriptor_r1*) Header;
@@ -331,7 +327,7 @@ OutputTerminal::OutputTerminal(AudioControlInterface*	interface,
 
 	TRACE("Output Terminal ID:%d >>>\n",	fID);
 	TRACE("Terminal type:%s (%#06x)\n",
-				GetTerminalDescription(fTerminalType), fTerminalType);
+		GetTerminalDescription(fTerminalType), fTerminalType);
 	TRACE("Assoc.terminal:%d\n",		fAssociatedTerminal);
 	TRACE("Source ID:%d\n",				fSourceID);
 
@@ -361,10 +357,10 @@ OutputTerminal::~OutputTerminal()
 
 
 MixerUnit::MixerUnit(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_AudioChannelCluster<_AudioControl>(interface, Header),
-			fControlsBitmap(0)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	_AudioChannelCluster<_AudioControl>(interface, Header),
+	fControlsBitmap(0)
 {
 	usb_mixer_unit_descriptor* Mixer
 		= (usb_mixer_unit_descriptor*) Header;
@@ -384,7 +380,7 @@ MixerUnit::MixerUnit(AudioControlInterface*	interface,
 	if (fInterface->SpecReleaseNumber() < 0x200) {
 		usb_output_channels_descriptor_r1* OutChannels
 			= (usb_output_channels_descriptor_r1*)
-				&Mixer->input_pins[Mixer->num_input_pins];
+			&Mixer->input_pins[Mixer->num_input_pins];
 
 		fOutChannelsNumber	= OutChannels->num_output_pins;
 		fChannelsConfig		= OutChannels->channel_config;
@@ -396,7 +392,7 @@ MixerUnit::MixerUnit(AudioControlInterface*	interface,
 	} else {
 		usb_output_channels_descriptor* OutChannels
 			= (usb_output_channels_descriptor*)
-				&Mixer->input_pins[Mixer->num_input_pins];
+			&Mixer->input_pins[Mixer->num_input_pins];
 
 		fOutChannelsNumber	= OutChannels->num_output_pins;
 		fChannelsConfig		= OutChannels->channel_config;
@@ -432,10 +428,10 @@ MixerUnit::~MixerUnit()
 
 
 SelectorUnit::SelectorUnit(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_AudioControl(interface, Header),
-			fControlsBitmap(0)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	_AudioControl(interface, Header),
+	fControlsBitmap(0)
 {
 	usb_selector_unit_descriptor* Selector
 		= (usb_selector_unit_descriptor*) Header;
@@ -450,10 +446,8 @@ SelectorUnit::SelectorUnit(AudioControlInterface*	interface,
 	}
 
 	if (fInterface->SpecReleaseNumber() < 0x200) {
-
 		fStringIndex = Selector->input_pins[Selector->num_input_pins];
 	} else {
-
 		fControlsBitmap = Selector->input_pins[Selector->num_input_pins];
 		fStringIndex = Selector->input_pins[Selector->num_input_pins + 1];
 
@@ -474,19 +468,16 @@ SelectorUnit::~SelectorUnit()
 AudioChannelCluster*
 SelectorUnit::OutCluster()
 {
-	if (fInterface == NULL) {
+	if (fInterface == NULL)
 		return NULL;
-	}
 
 	for (int i = 0; i < fInputPins.Count(); i++) {
 		_AudioControl* control = fInterface->Find(fInputPins[i]);
-		if (control == NULL) {
+		if (control == NULL)
 			continue;
-		}
 
-		if (control->OutCluster() != NULL) {
+		if (control->OutCluster() != NULL)
 			return control->OutCluster();
-		}
 	}
 
 	return NULL;
@@ -494,9 +485,9 @@ SelectorUnit::OutCluster()
 
 
 FeatureUnit::FeatureUnit(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_AudioControl(interface, Header)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	_AudioControl(interface, Header)
 {
 	usb_feature_unit_descriptor* Feature
 		= (usb_feature_unit_descriptor*) Header;
@@ -509,11 +500,11 @@ FeatureUnit::FeatureUnit(AudioControlInterface*	interface,
 
 	uint8 controlSize = 4;
 	uint8 channelsCount = (Feature->length - 6) / controlSize;
-	uint8 *ControlsBitmapPointer = (uint8*)&Feature->bma_controls[0];
+	uint8* ControlsBitmapPointer = (uint8*)&Feature->bma_controls[0];
 
 	if (fInterface->SpecReleaseNumber() < 0x200) {
 		usb_feature_unit_descriptor_r1* Feature
-			= (usb_feature_unit_descriptor_r1*) Header;
+			= (usb_feature_unit_descriptor_r1*)Header;
 		controlSize = Feature->control_size;
 		channelsCount = (Feature->length - 7) / Feature->control_size;
 		ControlsBitmapPointer = &Feature->bma_controls[0];
@@ -523,7 +514,7 @@ FeatureUnit::FeatureUnit(AudioControlInterface*	interface,
 	TRACE("Channels number:%d\n", channelsCount - 1); // not add master!
 
 	for (size_t i = 0; i < channelsCount; i++) {
-		uint8 *controlPointer = &ControlsBitmapPointer[i * controlSize];
+		uint8* controlPointer = &ControlsBitmapPointer[i*  controlSize];
 		switch(controlSize) {
 			case 1: fControlBitmaps.PushBack(*controlPointer); break;
 			case 2: fControlBitmaps.PushBack(*(uint16*)controlPointer); break;
@@ -537,7 +528,7 @@ FeatureUnit::FeatureUnit(AudioControlInterface*	interface,
 		NormalizeAndTraceChannel(i);
 	}
 
-	fStringIndex = ControlsBitmapPointer[channelsCount * controlSize];
+	fStringIndex = ControlsBitmapPointer[channelsCount* controlSize];
 	TRACE("StringIndex:%d\n", fStringIndex);
 
 	fStatus = B_OK;
@@ -553,7 +544,7 @@ const char*
 FeatureUnit::Name()
 {
 	// first check if source of this FU is an input terminal
-	_AudioControl *control = fInterface->Find(fSourceID);
+	_AudioControl* control = fInterface->Find(fSourceID);
 	while (control != 0) {
 
 		if (control->SubType() != IDSInputTerminal)
@@ -591,7 +582,7 @@ FeatureUnit::HasControl(int32 Channel, uint32 Control)
 {
 	if (Channel >= fControlBitmaps.Count()) {
 		TRACE_ALWAYS("Out of limits error of retrieving control %#010x "
-								"for channel %d\n", Control, Channel);
+			"for channel %d\n", Control, Channel);
 		return false;
 	}
 
@@ -640,9 +631,8 @@ FeatureUnit::NormalizeAndTraceChannel(int32 Channel)
 	for (size_t i = 0; i < _countof(remapInfos); i++) {
 		uint32 bits = isRev1 ? remapInfos[i].rev1Bits : remapInfos[i].rev2Bits;
 		if ((fControlBitmaps[Channel] & bits) > 0) {
-			if (isRev1) {
+			if (isRev1)
 				remappedBitmap |= remapInfos[i].rev2Bits;
-			}
 			TRACE("\t%s\n", remapInfos[i].name);
 		}
 	}
@@ -655,9 +645,9 @@ FeatureUnit::NormalizeAndTraceChannel(int32 Channel)
 
 
 EffectUnit::EffectUnit(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_AudioControl(interface, Header)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	_AudioControl(interface, Header)
 {
 	usb_input_terminal_descriptor* D
 		= (usb_input_terminal_descriptor*) Header;
@@ -671,11 +661,11 @@ EffectUnit::~EffectUnit()
 
 
 ProcessingUnit::ProcessingUnit(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_AudioChannelCluster<_AudioControl>(interface, Header),
-			fProcessType(0),
-			fControlsBitmap(0)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	_AudioChannelCluster<_AudioControl>(interface, Header),
+	fProcessType(0),
+	fControlsBitmap(0)
 {
 	usb_processing_unit_descriptor* Processing
 		= (usb_processing_unit_descriptor*) Header;
@@ -695,7 +685,7 @@ ProcessingUnit::ProcessingUnit(AudioControlInterface*	interface,
 	if (fInterface->SpecReleaseNumber() < 0x200) {
 		usb_output_channels_descriptor_r1* OutChannels
 			= (usb_output_channels_descriptor_r1*)
-				&Processing->input_pins[Processing->num_input_pins];
+			&Processing->input_pins[Processing->num_input_pins];
 
 		fOutChannelsNumber	= OutChannels->num_output_pins;
 		fChannelsConfig		= OutChannels->channel_config;
@@ -703,7 +693,7 @@ ProcessingUnit::ProcessingUnit(AudioControlInterface*	interface,
 	} else {
 		usb_output_channels_descriptor* OutChannels
 			= (usb_output_channels_descriptor*)
-				&Processing->input_pins[Processing->num_input_pins];
+			&Processing->input_pins[Processing->num_input_pins];
 
 		fOutChannelsNumber	= OutChannels->num_output_pins;
 		fChannelsConfig		= OutChannels->channel_config;
@@ -738,11 +728,11 @@ ProcessingUnit::~ProcessingUnit()
 
 
 ExtensionUnit::ExtensionUnit(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_AudioChannelCluster<_AudioControl>(interface, Header),
-			fExtensionCode(0),
-			fControlsBitmap(0)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	_AudioChannelCluster<_AudioControl>(interface, Header),
+	fExtensionCode(0),
+	fControlsBitmap(0)
 {
 	usb_extension_unit_descriptor* Extension
 		= (usb_extension_unit_descriptor*) Header;
@@ -762,7 +752,7 @@ ExtensionUnit::ExtensionUnit(AudioControlInterface*	interface,
 	if (fInterface->SpecReleaseNumber() < 0x200) {
 		usb_output_channels_descriptor_r1* OutChannels
 			= (usb_output_channels_descriptor_r1*)
-				&Extension->input_pins[Extension->num_input_pins];
+			&Extension->input_pins[Extension->num_input_pins];
 
 		fOutChannelsNumber	= OutChannels->num_output_pins;
 		fChannelsConfig		= OutChannels->channel_config;
@@ -770,7 +760,7 @@ ExtensionUnit::ExtensionUnit(AudioControlInterface*	interface,
 	} else {
 		usb_output_channels_descriptor* OutChannels
 			= (usb_output_channels_descriptor*)
-				&Extension->input_pins[Extension->num_input_pins];
+			&Extension->input_pins[Extension->num_input_pins];
 
 		fOutChannelsNumber	= OutChannels->num_output_pins;
 		fChannelsConfig		= OutChannels->channel_config;
@@ -805,9 +795,9 @@ ExtensionUnit::~ExtensionUnit()
 
 
 ClockSource::ClockSource(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_AudioControl(interface, Header)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	_AudioControl(interface, Header)
 {
 	usb_input_terminal_descriptor* D
 		= (usb_input_terminal_descriptor*) Header;
@@ -821,9 +811,9 @@ ClockSource::~ClockSource()
 
 
 ClockSelector::ClockSelector(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_AudioControl(interface, Header)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	_AudioControl(interface, Header)
 {
 	usb_input_terminal_descriptor* D
 		= (usb_input_terminal_descriptor*) Header;
@@ -837,9 +827,9 @@ ClockSelector::~ClockSelector()
 
 
 ClockMultiplier::ClockMultiplier(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_AudioControl(interface, Header)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	_AudioControl(interface, Header)
 {
 	usb_input_terminal_descriptor* D
 		= (usb_input_terminal_descriptor*) Header;
@@ -853,9 +843,9 @@ ClockMultiplier::~ClockMultiplier()
 
 
 SampleRateConverter::SampleRateConverter(AudioControlInterface*	interface,
-					usb_audiocontrol_header_descriptor* Header)
-			:
-			_AudioControl(interface, Header)
+		usb_audiocontrol_header_descriptor* Header)
+	:
+	_AudioControl(interface, Header)
 {
 	usb_input_terminal_descriptor* D
 		= (usb_input_terminal_descriptor*) Header;
@@ -869,13 +859,13 @@ SampleRateConverter::~SampleRateConverter()
 
 
 AudioControlInterface::AudioControlInterface(Device* device)
-			:
-			fInterface(0),
-			fStatus(B_NO_INIT),
-			fADCSpecification(0),
-			fFunctionCategory(0),
-			fControlsBitmap(0),
-			fDevice(device)
+	:
+	fInterface(0),
+	fStatus(B_NO_INIT),
+	fADCSpecification(0),
+	fFunctionCategory(0),
+	fControlsBitmap(0),
+	fDevice(device)
 {
 }
 
@@ -883,9 +873,8 @@ AudioControlInterface::AudioControlInterface(Device* device)
 AudioControlInterface::~AudioControlInterface()
 {
 	for (AudioControlsIterator I = fAudioControls.Begin();
-								I != fAudioControls.End(); I++) {
+			I != fAudioControls.End(); I++)
 		delete I->Value();
-	}
 
 	fAudioControls.MakeEmpty();
 
@@ -898,11 +887,11 @@ AudioControlInterface::~AudioControlInterface()
 
 
 status_t
-AudioControlInterface::Init(size_t interface, usb_interface_info *Interface)
+AudioControlInterface::Init(size_t interface, usb_interface_info* Interface)
 {
 	for (size_t i = 0; i < Interface->generic_count; i++) {
-		usb_audiocontrol_header_descriptor *Header
-			= (usb_audiocontrol_header_descriptor *)Interface->generic[i];
+		usb_audiocontrol_header_descriptor* Header
+			= (usb_audiocontrol_header_descriptor* )Interface->generic[i];
 
 		if (Header->descriptor_type != AC_CS_INTERFACE) {
 			TRACE_ALWAYS("Ignore Audio Control of "
@@ -910,7 +899,7 @@ AudioControlInterface::Init(size_t interface, usb_interface_info *Interface)
 			continue;
 		}
 
-		_AudioControl *control = NULL;
+		_AudioControl* control = NULL;
 
 		switch(Header->descriptor_subtype) {
 			default:
@@ -978,9 +967,8 @@ AudioControlInterface::Init(size_t interface, usb_interface_info *Interface)
 			}
 			fAudioControls.Put(control->ID(), control);
 
-		} else {
+		} else
 			delete control;
-		}
 	}
 
 	return fStatus = B_OK;
@@ -1003,11 +991,10 @@ AudioControlInterface::FindOutputTerminal(uint8 id)
 
 status_t
 AudioControlInterface::InitACHeader(size_t interface,
-						usb_audiocontrol_header_descriptor* Header)
+		usb_audiocontrol_header_descriptor* Header)
 {
-	if (Header == NULL) {
+	if (Header == NULL)
 		return fStatus = B_NO_INIT;
-	}
 
 	fInterface = interface;
 
@@ -1034,11 +1021,10 @@ AudioControlInterface::InitACHeader(size_t interface,
 }
 
 
-	uint32
+uint32
 AudioControlInterface::GetChannelsDescription(
-						Vector<multi_channel_info>& Channels,
-						multi_description *Description,
-						AudioControlsVector &Terminals)
+		Vector<multi_channel_info>& Channels, multi_description* Description,
+		Vector<_AudioControl*>&Terminals)
 {
 	uint32 addedChannels = 0;
 //	multi_channel_info* Channels = Description->channels;
@@ -1070,8 +1056,7 @@ AudioControlInterface::GetChannelsDescription(
 
 uint32
 AudioControlInterface::GetTerminalChannels(Vector<multi_channel_info>& Channels,
-						AudioChannelCluster* cluster, channel_kind kind,
-						uint32 connectors)
+		AudioChannelCluster* cluster, channel_kind kind, uint32 connectors)
 {
 	if (cluster->ChannelsCount() < 2) { // mono channel
 		multi_channel_info info;
@@ -1132,15 +1117,14 @@ AudioControlInterface::GetTerminalChannels(Vector<multi_channel_info>& Channels,
 
 uint32
 AudioControlInterface::GetBusChannelsDescription(
-					Vector<multi_channel_info>& Channels,
-					multi_description *Description)
+		Vector<multi_channel_info>& Channels, multi_description* Description)
 {
 	uint32 addedChannels = 0;
 //	multi_channel_info* Channels = Description->channels;
 
 	// first iterate output channels
 	for (AudioControlsIterator I = fOutputTerminals.Begin();
-											I != fOutputTerminals.End(); I++) {
+			I != fOutputTerminals.End(); I++) {
 
 		_AudioControl* control = I->Value();
 		if (static_cast<_Terminal*>(control)->IsUSBIO())
@@ -1162,7 +1146,7 @@ AudioControlInterface::GetBusChannelsDescription(
 
 	// output channels should follow too
 	for (AudioControlsIterator I = fInputTerminals.Begin();
-										I != fInputTerminals.End(); I++) {
+			I != fInputTerminals.End(); I++) {
 
 		_AudioControl* control = I->Value();
 		if (static_cast<_Terminal*>(control)->IsUSBIO())
@@ -1188,7 +1172,7 @@ AudioControlInterface::GetBusChannelsDescription(
 
 void
 AudioControlInterface::_HarvestRecordFeatureUnits(_AudioControl* rootControl,
-					AudioControlsMap& Map)
+		AudioControlsMap& Map)
 {
 	if (rootControl == 0) {
 		TRACE_ALWAYS("Not processing due NULL root control.\n");
@@ -1203,9 +1187,8 @@ AudioControlInterface::_HarvestRecordFeatureUnits(_AudioControl* rootControl,
 		case IDSSelectorUnit:
 			{
 				SelectorUnit* unit = static_cast<SelectorUnit*>(rootControl);
-				for (int i = 0; i < unit->fInputPins.Count(); i++) {
+				for (int i = 0; i < unit->fInputPins.Count(); i++)
 					_HarvestRecordFeatureUnits(Find(unit->fInputPins[i]), Map);
-				}
 
 				Map.Put(rootControl->ID(), rootControl);
 			}
@@ -1238,14 +1221,14 @@ AudioControlInterface::_InitGainLimits(multi_mix_control& Control)
 	size_t actualLength = 0;
 	for (size_t i = 0; i < _countof(gainInfos); i++) {
 		status_t status = gUSBModule->send_request(fDevice->USBDevice(),
-				USB_REQTYPE_INTERFACE_IN | USB_REQTYPE_CLASS,
-				gainInfos[i].request, REQ_VALUE(Control.id),
-				REQ_INDEX(Control.id), sizeof(gainInfos[i].data),
-				&gainInfos[i].data, &actualLength);
+			USB_REQTYPE_INTERFACE_IN | USB_REQTYPE_CLASS,
+			gainInfos[i].request, REQ_VALUE(Control.id),
+			REQ_INDEX(Control.id), sizeof(gainInfos[i].data),
+			&gainInfos[i].data, &actualLength);
 
 		if (status != B_OK || actualLength != sizeof(gainInfos[i].data)) {
 			TRACE_ALWAYS("Request %d failed:%#08x; received %d of %d\n",
-					i, status, actualLength, sizeof(gainInfos[i].data));
+				i, status, actualLength, sizeof(gainInfos[i].data));
 			continue;
 		}
 
@@ -1253,16 +1236,14 @@ AudioControlInterface::_InitGainLimits(multi_mix_control& Control)
 	}
 
 	TRACE_ALWAYS("Control %s: from %f to %f dB, step %f dB.\n", Control.name,
-			Control.gain.min_gain, Control.gain.max_gain,
-			Control.gain.granularity);
+		Control.gain.min_gain, Control.gain.max_gain, Control.gain.granularity);
 }
 
 
 uint32
 AudioControlInterface::_ListFeatureUnitOption(uint32 controlType,
-								int32& index, int32 parentIndex,
-								multi_mix_control_info* Info, FeatureUnit* unit,
-								uint32 channel, uint32 channels)
+		int32& index, int32 parentIndex, multi_mix_control_info* Info,
+		FeatureUnit* unit, uint32 channel, uint32 channels)
 {
 	int32 startIndex = index;
 	uint32 id = 0;
@@ -1330,7 +1311,7 @@ AudioControlInterface::_ListFeatureUnitOption(uint32 controlType,
 
 int32
 AudioControlInterface::_ListFeatureUnitControl(int32& index, int32 parentIndex,
-						multi_mix_control_info* Info, _AudioControl* control)
+		multi_mix_control_info* Info, _AudioControl* control)
 {
 	FeatureUnit* unit = static_cast<FeatureUnit*>(control);
 	if (unit == 0) {
@@ -1439,10 +1420,9 @@ AudioControlInterface::_ListFeatureUnitControl(int32& index, int32 parentIndex,
 			break;
 	}
 
-	if (channelsConfig > 0) {
-		TRACE_ALWAYS("Following channels were "
-								"not processed: %#08x.\n", channelsConfig);
-	}
+	if (channelsConfig > 0)
+		TRACE_ALWAYS("Following channels were not processed: %#08x.\n",
+			channelsConfig);
 
 	// return last group index to stick possible selector unit to it. ;-)
 	return groupIndex;
@@ -1451,12 +1431,11 @@ AudioControlInterface::_ListFeatureUnitControl(int32& index, int32 parentIndex,
 
 void
 AudioControlInterface::_ListSelectorUnitControl(int32& index, int32 parentGroup,
-						multi_mix_control_info* Info, _AudioControl* control)
+		multi_mix_control_info* Info, _AudioControl* control)
 {
 	SelectorUnit* selector = static_cast<SelectorUnit*>(control);
-	if (selector == 0 || selector->SubType() != IDSSelectorUnit) {
+	if (selector == 0 || selector->SubType() != IDSSelectorUnit)
 		return;
-	}
 
 	multi_mix_control* Controls = Info->controls;
 
@@ -1475,23 +1454,20 @@ AudioControlInterface::_ListSelectorUnitControl(int32& index, int32 parentGroup,
 		Controls[index].string	= S_null;
 		Controls[index].parent	= recordMUX;
 		_AudioControl* control = Find(selector->fInputPins[i]);
-		if (control != NULL) {
+		if (control != NULL)
 			strlcpy(Controls[index].name,
-					control->Name(), sizeof(Controls[index].name));
-		} else {
+				control->Name(), sizeof(Controls[index].name));
+		else
 			snprintf(Controls[index].name,
-					sizeof(Controls[index].name), "Input #%d", i + 1);
-		}
+				sizeof(Controls[index].name), "Input #%d", i + 1);
 		index++;
 	}
-
 }
 
 
 void
 AudioControlInterface::_ListMixControlsPage(int32& index,
-					multi_mix_control_info* Info,
-					AudioControlsMap& Map, const char* Name)
+		multi_mix_control_info* Info, AudioControlsMap& Map, const char* Name)
 {
 	multi_mix_control* Controls = Info->controls;
 	int32 groupIndex
@@ -1507,7 +1483,7 @@ AudioControlInterface::_ListMixControlsPage(int32& index,
 		switch(I->Value()->SubType()) {
 			case IDSFeatureUnit:
 				group = _ListFeatureUnitControl(index, groupIndex,
-															Info, I->Value());
+					Info, I->Value());
 				break;
 			case IDSSelectorUnit:
 				_ListSelectorUnitControl(index, group, Info, I->Value());
@@ -1524,61 +1500,51 @@ AudioControlInterface::ListMixControls(multi_mix_control_info* Info)
 	AudioControlsMap RecordControlsMap;
 
 	for (AudioControlsIterator I = fOutputTerminals.Begin();
-										I != fOutputTerminals.End(); I++)
-	{
+			I != fOutputTerminals.End(); I++) {
 		_Terminal* terminal = static_cast<_Terminal*>(I->Value());
-		if (terminal->IsUSBIO()) {
+		if (terminal->IsUSBIO())
 			_HarvestRecordFeatureUnits(terminal, RecordControlsMap);
-		}
 	}
 
 	AudioControlsMap InputControlsMap;
 	AudioControlsMap OutputControlsMap;
 
 	for (AudioControlsIterator I = fAudioControls.Begin();
-										I != fAudioControls.End(); I++)
-	{
+			I != fAudioControls.End(); I++) {
 		_AudioControl* control = I->Value();
 		// filter out feature units
-		if (control->SubType() != IDSFeatureUnit) {
+		if (control->SubType() != IDSFeatureUnit)
 			continue;
-		}
 
 		// ignore controls that are already in the record controls map
-		if (RecordControlsMap.Find(control->ID()) != RecordControlsMap.End()) {
+		if (RecordControlsMap.Find(control->ID()) != RecordControlsMap.End())
 			continue;
-		}
 
 		_AudioControl* sourceControl = Find(control->SourceID());
-		if (sourceControl != 0 && sourceControl->SubType() == IDSInputTerminal) {
+		if (sourceControl != 0 && sourceControl->SubType() == IDSInputTerminal)
 			InputControlsMap.Put(control->ID(), control);
-		} else {
+		else
 			OutputControlsMap.Put(control->ID(), control);
-		}
 	}
 
 	int32 index = 0;
-	if (InputControlsMap.Count() > 0) {
+	if (InputControlsMap.Count() > 0)
 		_ListMixControlsPage(index, Info, InputControlsMap, "Input");
-	}
 
-	if (OutputControlsMap.Count() > 0) {
+	if (OutputControlsMap.Count() > 0)
 		_ListMixControlsPage(index, Info, OutputControlsMap, "Output");
-	}
 
-	if (RecordControlsMap.Count() > 0) {
+	if (RecordControlsMap.Count() > 0)
 		_ListMixControlsPage(index, Info, RecordControlsMap, "Record");
-	}
 
 	return B_OK;
 }
 
 
 status_t
-AudioControlInterface::GetMix(multi_mix_value_info *Info)
+AudioControlInterface::GetMix(multi_mix_value_info* Info)
 {
 	for (int32 i = 0; i < Info->item_count; i++) {
-
 		uint16 length = 0;
 		int16 data = 0;
 		switch(CS_FROM_CTLID(Info->values[i].id)) {
@@ -1592,19 +1558,19 @@ AudioControlInterface::GetMix(multi_mix_value_info *Info)
 				break;
 			default:
 				TRACE_ALWAYS("Unsupported control type %#02x ignored.\n",
-						CS_FROM_CTLID(Info->values[i].id));
+					CS_FROM_CTLID(Info->values[i].id));
 				continue;
 		}
 
 		size_t actualLength = 0;
 		status_t status = gUSBModule->send_request(fDevice->USBDevice(),
-				USB_REQTYPE_INTERFACE_IN | USB_REQTYPE_CLASS, UAS_GET_CUR,
-				REQ_VALUE(Info->values[i].id), REQ_INDEX(Info->values[i].id),
-				length, &data, &actualLength);
+			USB_REQTYPE_INTERFACE_IN | USB_REQTYPE_CLASS, UAS_GET_CUR,
+			REQ_VALUE(Info->values[i].id), REQ_INDEX(Info->values[i].id),
+			length, &data, &actualLength);
 
 		if (status != B_OK || actualLength != length) {
 			TRACE_ALWAYS("Request failed:%#08x; received %d of %d\n",
-					status, actualLength, length);
+				status, actualLength, length);
 			continue;
 		}
 
@@ -1612,29 +1578,29 @@ AudioControlInterface::GetMix(multi_mix_value_info *Info)
 			case UAS_VOLUME_CONTROL:
 				Info->values[i].gain = static_cast<float>(data) / 256.;
 				TRACE("Gain control %d; channel: %d; is %f dB.\n",
-						ID_FROM_CTLID(Info->values[i].id),
-						CN_FROM_CTLID(Info->values[i].id),
-						Info->values[i].gain);
+					ID_FROM_CTLID(Info->values[i].id),
+					CN_FROM_CTLID(Info->values[i].id),
+					Info->values[i].gain);
 				break;
 			case UAS_MUTE_CONTROL:
 				Info->values[i].enable = data > 0;
 				TRACE("Mute control %d; channel: %d; is %d.\n",
-						ID_FROM_CTLID(Info->values[i].id),
-						CN_FROM_CTLID(Info->values[i].id),
-						Info->values[i].enable);
+					ID_FROM_CTLID(Info->values[i].id),
+					CN_FROM_CTLID(Info->values[i].id),
+					Info->values[i].enable);
 				break;
 			case UAS_AUTOMATIC_GAIN_CONTROL:
 				Info->values[i].enable = data > 0;
 				TRACE("AGain control %d; channel: %d; is %d.\n",
-						ID_FROM_CTLID(Info->values[i].id),
-						CN_FROM_CTLID(Info->values[i].id),
-						Info->values[i].enable);
+					ID_FROM_CTLID(Info->values[i].id),
+					CN_FROM_CTLID(Info->values[i].id),
+					Info->values[i].enable);
 				break;
 			case 0: // Selector Unit
 				Info->values[i].mux = data;
 				TRACE("Selector control %d; is %d.\n",
-						ID_FROM_CTLID(Info->values[i].id),
-						Info->values[i].mux);
+					ID_FROM_CTLID(Info->values[i].id),
+					Info->values[i].mux);
 				break;
 			default:
 				break;
@@ -1646,10 +1612,9 @@ AudioControlInterface::GetMix(multi_mix_value_info *Info)
 
 
 status_t
-AudioControlInterface::SetMix(multi_mix_value_info *Info)
+AudioControlInterface::SetMix(multi_mix_value_info* Info)
 {
 	for (int32 i = 0; i < Info->item_count; i++) {
-
 		uint16 length = 0;
 		int16 data = 0;
 
@@ -1658,48 +1623,48 @@ AudioControlInterface::SetMix(multi_mix_value_info *Info)
 				data = static_cast<int16>(Info->values[i].gain * 256.);
 				length = 2;
 				TRACE("Gain control %d; channel: %d; about to set to %f dB.\n",
-						ID_FROM_CTLID(Info->values[i].id),
-						CN_FROM_CTLID(Info->values[i].id),
-						Info->values[i].gain);
+					ID_FROM_CTLID(Info->values[i].id),
+					CN_FROM_CTLID(Info->values[i].id),
+					Info->values[i].gain);
 				break;
 			case UAS_MUTE_CONTROL:
 				data = (Info->values[i].enable ? 1 : 0);
 				length = 1;
 				TRACE("Mute control %d; channel: %d; about to set to %d.\n",
-						ID_FROM_CTLID(Info->values[i].id),
-						CN_FROM_CTLID(Info->values[i].id),
-						Info->values[i].enable);
+					ID_FROM_CTLID(Info->values[i].id),
+					CN_FROM_CTLID(Info->values[i].id),
+					Info->values[i].enable);
 				break;
 			case UAS_AUTOMATIC_GAIN_CONTROL:
 				data = (Info->values[i].enable ? 1 : 0);
 				length = 1;
 				TRACE("AGain control %d; channel: %d; about to set to %d.\n",
-						ID_FROM_CTLID(Info->values[i].id),
-						CN_FROM_CTLID(Info->values[i].id),
-						Info->values[i].enable);
+					ID_FROM_CTLID(Info->values[i].id),
+					CN_FROM_CTLID(Info->values[i].id),
+					Info->values[i].enable);
 				break;
 			case 0: // Selector Unit
 				data = Info->values[i].mux;
 				length = 1;
 				TRACE("Selector Control %d about to set to %d.\n",
-						ID_FROM_CTLID(Info->values[i].id),
-						Info->values[i].mux);
+					ID_FROM_CTLID(Info->values[i].id),
+					Info->values[i].mux);
 				break;
 			default:
 				TRACE_ALWAYS("Unsupported control type %#02x ignored.\n",
-						CS_FROM_CTLID(Info->values[i].id));
+					CS_FROM_CTLID(Info->values[i].id));
 				continue;
 		}
 
 		size_t actualLength = 0;
 		status_t status = gUSBModule->send_request(fDevice->USBDevice(),
-				USB_REQTYPE_INTERFACE_OUT | USB_REQTYPE_CLASS, UAS_SET_CUR,
-				REQ_VALUE(Info->values[i].id), REQ_INDEX(Info->values[i].id),
-				length, &data, &actualLength);
+			USB_REQTYPE_INTERFACE_OUT | USB_REQTYPE_CLASS, UAS_SET_CUR,
+			REQ_VALUE(Info->values[i].id), REQ_INDEX(Info->values[i].id),
+			length, &data, &actualLength);
 
 		if (status != B_OK || actualLength != length) {
 			TRACE_ALWAYS("Request failed:%#08x; send %d of %d\n",
-					status, actualLength, length);
+				status, actualLength, length);
 			continue;
 		}
 

@@ -10,6 +10,7 @@
 
 #include <malloc.h>
 
+#include "Driver.h"
 #include "Settings.h"
 
 
@@ -349,7 +350,7 @@ Device::_MultiGetDescription(multi_description* multiDescription)
 
 	Description.control_panel[0] = '\0';
 
-	AudioControlsVector USBTerminals;
+	Vector<_AudioControl*>	USBTerminals;
 
 	// channels (USB I/O  terminals) are already in fStreams
 	// in outputs->inputs order, use them.
