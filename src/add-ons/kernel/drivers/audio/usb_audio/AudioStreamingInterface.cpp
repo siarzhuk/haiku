@@ -9,7 +9,9 @@
 #include "AudioStreamingInterface.h"
 
 
-#include "audio.h"
+#include <usb/USB_audio.h>
+#include "USB_audio_spec.h"
+
 #include "Driver.h"
 #include "Settings.h"
 
@@ -104,7 +106,7 @@ ASEndpointDescriptor::~ASEndpointDescriptor()
 _ASFormatDescriptor::_ASFormatDescriptor(
 		usb_type_I_format_descriptor* Descriptor)
 	:
-	fFormatType(UAF_FORMAT_TYPE_UNDEFINED)
+	fFormatType(USB_AUDIO_FORMAT_TYPE_UNDEFINED)
 {
 	fFormatType = Descriptor->format_type;
 }
@@ -326,9 +328,13 @@ AudioStreamAlternate::GetFormatId()
 
 	uint32 formats = 0;
 	switch (Interface()->fFormatTag) {
-		case UAF_PCM8: formats = B_FMT_8BIT_U; break;
-		case UAF_IEEE_FLOAT: formats = B_FMT_FLOAT; break;
-		case UAF_PCM:
+		case USB_AUDIO_FORMAT_PCM8:
+			formats = B_FMT_8BIT_U;
+			break;
+		case USB_AUDIO_FORMAT_IEEE_FLOAT:
+			formats = B_FMT_FLOAT;
+			break;
+		case USB_AUDIO_FORMAT_PCM:
 			switch(format->fBitResolution) {
 				case 8: formats = B_FMT_8BIT_S; break;
 				case 16: formats = B_FMT_16BIT; break;
@@ -404,16 +410,16 @@ AudioStreamingInterface::AudioStreamingInterface(
 			usb_audiocontrol_header_descriptor* Header
 				= (usb_audiocontrol_header_descriptor*)Interface->generic[i];
 
-			if (Header->descriptor_type == AC_CS_INTERFACE) {
+			if (Header->descriptor_type == USB_AUDIO_CS_INTERFACE) {
 				switch(Header->descriptor_subtype) {
-					case UAS_AS_GENERAL:
+					case USB_AUDIO_AS_GENERAL:
 						if (ASInterface == 0)
 							ASInterface = new ASInterfaceDescriptor(
 								(usb_as_interface_descriptor_r1*) Header);
 						else
 							TRACE_ALWAYS("Duplicate AStream interface ignored.\n");
 						break;
-					case UAS_FORMAT_TYPE:
+					case USB_AUDIO_AS_FORMAT_TYPE:
 						if (ASFormat == 0)
 							ASFormat = new TypeIFormatDescriptor(
 								(usb_type_I_format_descriptor*) Header);
@@ -428,7 +434,7 @@ AudioStreamingInterface::AudioStreamingInterface(
 				continue;
 			}
 
-			if (Header->descriptor_type == AC_CS_ENDPOINT) {
+			if (Header->descriptor_type == USB_AUDIO_CS_ENDPOINT) {
 				if (ASEndpoint == 0) {
 					usb_endpoint_descriptor* Endpoint
 						= Interface->endpoint[0].descr;

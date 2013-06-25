@@ -7,7 +7,10 @@
 
 #include "AudioControlInterface.h"
 
-#include "audio.h"
+#include <usb/USB_audio.h>
+
+#include "USB_audio_spec.h"
+
 #include "Device.h"
 #include "Driver.h"
 #include "Settings.h"
@@ -546,7 +549,7 @@ FeatureUnit::Name()
 	// first check if source of this FU is an input terminal
 	_AudioControl* control = fInterface->Find(fSourceID);
 	while (control != 0) {
-		if (control->SubType() != IDSInputTerminal)
+		if (control->SubType() != USB_AUDIO_AC_INPUT_TERMINAL)
 			break;
 
 		// USB I/O terminal is a not good candidate to use it's name
@@ -560,7 +563,7 @@ FeatureUnit::Name()
 	// check if output of this FU is connected to output terminal
 	control = fInterface->FindOutputTerminal(fID);
 	while (control != 0) {
-		if (control->SubType() != IDSOutputTerminal)
+		if (control->SubType() != USB_AUDIO_AC_OUTPUT_TERMINAL)
 			break;
 
 		// USB I/O terminal is a not good candidate to use it's name
@@ -601,21 +604,21 @@ FeatureUnit::NormalizeAndTraceChannel(int32 Channel)
 		uint32	rev2Bits;
 		const char* name;
 	} remapInfos[] = {
-		{ MuteControl1,		MuteControl,		"Mute"		},
-		{ VolumeControl1,	VolumeControl,		"Volume"	},
-		{ BassControl1,		BassControl,		"Bass"		},
-		{ MidControl1,		MidControl,			"Mid"		},
-		{ TrebleControl1,	TrebleControl,		"Treble"	},
-		{ GraphEqControl1,	GraphEqControl,		"Graphic Equalizer"	},
-		{ AutoGainControl1,	AutoGainControl,	"Automatic Gain"	},
-		{ DelayControl1,		DelayControl,		"Delay"			},
-		{ BassBoostControl1,	BassBoostControl,	"Bass Boost"	},
-		{ LoudnessControl1,		LoudnessControl,	"Loudness"		},
-		{ 0,				InputGainControl,		"InputGain"		},
-		{ 0,				InputGainPadControl,	"InputGainPad"	},
-		{ 0,				PhaseInverterControl,	"PhaseInverter"	},
-		{ 0,				UnderflowControl,		"Underflow"		},
-		{ 0,				OverflowControl,		"Overflow"		}
+		{ BMA_CTL_MUTE_R1,		BMA_CTL_MUTE,			"Mute"		},
+		{ BMA_CTL_VOLUME_R1,	BMA_CTL_VOLUME,			"Volume"	},
+		{ BMA_CTL_BASS_R1,		BMA_CTL_BASS,			"Bass"		},
+		{ BMA_CTL_MID_R1,		BMA_CTL_MID,			"Mid"		},
+		{ BMA_CTL_TREBLE_R1,	BMA_CTL_TREBLE,			"Treble"	},
+		{ BMA_CTL_GRAPHEQ_R1,	BMA_CTL_GRAPHEQ,		"Graphic Equalizer"	},
+		{ BMA_CTL_AUTOGAIN_R1,	BMA_CTL_AUTOGAIN,		"Automatic Gain"},
+		{ BMA_CTL_DELAY_R1,		BMA_CTL_DELAY,			"Delay"			},
+		{ BMA_CTL_BASSBOOST_R1,	BMA_CTL_BASSBOOST,		"Bass Boost"	},
+		{ BMA_CTL_LOUDNESS_R1,	BMA_CTL_LOUDNESS,		"Loudness"		},
+		{ 0,					BMA_CTL_INPUTGAIN,		"InputGain"		},
+		{ 0,					BMA_CTL_INPUTGAINPAD,	"InputGainPad"	},
+		{ 0,					BMA_CTL_PHASEINVERTER,	"PhaseInverter"	},
+		{ 0,					BMA_CTL_UNDERFLOW,		"Underflow"		},
+		{ 0,					BMA_CTL_OVERFLOW,		"Overflow"		}
 	};
 
 	if (Channel == 0)
@@ -891,7 +894,7 @@ AudioControlInterface::Init(size_t interface, usb_interface_info* Interface)
 		usb_audiocontrol_header_descriptor* Header
 			= (usb_audiocontrol_header_descriptor* )Interface->generic[i];
 
-		if (Header->descriptor_type != AC_CS_INTERFACE) {
+		if (Header->descriptor_type != USB_AUDIO_CS_INTERFACE) {
 			TRACE_ALWAYS("Ignore Audio Control of "
 				"unknown descriptor type %#04x.\n",	Header->descriptor_type);
 			continue;
@@ -904,62 +907,62 @@ AudioControlInterface::Init(size_t interface, usb_interface_info* Interface)
 				TRACE_ALWAYS("Ignore Audio Control of unknown "
 					"descriptor sub-type %#04x\n", Header->descriptor_subtype);
 				break;
-			case IDSUndefined:
+			case USB_AUDIO_AC_DESCRIPTOR_UNDEFINED:
 				TRACE_ALWAYS("Ignore Audio Control of undefined sub-type\n");
 				break;
-			case IDSHeader:
+			case USB_AUDIO_AC_HEADER:
 				InitACHeader(interface, Header);
 				break;
-			case IDSInputTerminal:
+			case USB_AUDIO_AC_INPUT_TERMINAL:
 				control = new InputTerminal(this, Header);
 				break;
-			case IDSOutputTerminal:
+			case USB_AUDIO_AC_OUTPUT_TERMINAL:
 				control = new OutputTerminal(this, Header);
 				break;
-			case IDSMixerUnit:
+			case USB_AUDIO_AC_MIXER_UNIT:
 				control = new MixerUnit(this, Header);
 				break;
-			case IDSSelectorUnit:
+			case USB_AUDIO_AC_SELECTOR_UNIT:
 				control = new SelectorUnit(this, Header);
 				break;
-			case IDSFeatureUnit:
+			case USB_AUDIO_AC_FEATURE_UNIT:
 				control = new FeatureUnit(this, Header);
 				break;
-			case IDSEffectUnit:
+			case USB_AUDIO_AC_PROCESSING_UNIT:
 				if (SpecReleaseNumber() < 200)
 					control = new ProcessingUnit(this, Header);
 				else
 					control = new EffectUnit(this, Header);
 				break;
-			case IDSProcessingUnit:
+			case USB_AUDIO_AC_EXTENSION_UNIT:
 				if (SpecReleaseNumber() < 200)
 					control = new ExtensionUnit(this, Header);
 				else
 					control = new ProcessingUnit(this, Header);
 				break;
-			case IDSExtensionUnit:
+			case USB_AUDIO_AC_EXTENSION_UNIT_R2:
 				control = new ExtensionUnit(this, Header);
 				break;
-			case IDSClockSource:
+			case USB_AUDIO_AC_CLOCK_SOURCE_R2:
 				control = new ClockSource(this, Header);
 				break;
-			case IDSClockSelector:
+			case USB_AUDIO_AC_CLOCK_SELECTOR_R2:
 				control = new ClockSelector(this, Header);
 				break;
-			case IDSClockMultiplier:
+			case USB_AUDIO_AC_CLOCK_MULTIPLIER_R2:
 				control = new ClockMultiplier(this, Header);
 				break;
-			case IDSSampleRateConverter:
+			case USB_AUDIO_AC_SAMPLE_RATE_CONVERTER_R2:
 				control = new SampleRateConverter(this, Header);
 				break;
 		}
 
 		if (control != 0 && control->InitCheck() == B_OK) {
 			switch(control->SubType()) {
-				case IDSOutputTerminal:
+				case USB_AUDIO_AC_OUTPUT_TERMINAL:
 					fOutputTerminals.Put(control->SourceID(), control);
 					break;
-				case IDSInputTerminal:
+				case USB_AUDIO_AC_INPUT_TERMINAL:
 					fInputTerminals.Put(control->ID(), control);
 					break;
 			}
@@ -1028,7 +1031,8 @@ AudioControlInterface::GetChannelsDescription(
 //	multi_channel_info* Channels = Description->channels;
 
 	for (int32 i = 0; i < Terminals.Count(); i++) {
-		bool bIsInputTerminal = Terminals[i]->SubType() == IDSInputTerminal;
+		bool bIsInputTerminal
+			= Terminals[i]->SubType() == USB_AUDIO_AC_INPUT_TERMINAL;
 
 		AudioChannelCluster* cluster = Terminals[i]->OutCluster();
 		if (cluster == 0 || cluster->ChannelsCount() <= 0) {
@@ -1176,11 +1180,11 @@ AudioControlInterface::_HarvestRecordFeatureUnits(_AudioControl* rootControl,
 	}
 
 	switch(rootControl->SubType()) {
-		case IDSOutputTerminal:
+		case USB_AUDIO_AC_OUTPUT_TERMINAL:
 			// _HarvestRecordFeatureUnits(Find(rootControl->SourceID()), Map);
 			break;
 
-		case IDSSelectorUnit:
+		case USB_AUDIO_AC_SELECTOR_UNIT:
 			{
 				SelectorUnit* unit = static_cast<SelectorUnit*>(rootControl);
 				for (int i = 0; i < unit->fInputPins.Count(); i++)
@@ -1190,7 +1194,7 @@ AudioControlInterface::_HarvestRecordFeatureUnits(_AudioControl* rootControl,
 			}
 			break;
 
-		case IDSFeatureUnit:
+		case USB_AUDIO_AC_FEATURE_UNIT:
 			Map.Put(rootControl->ID(), rootControl);
 			break;
 	}
@@ -1205,9 +1209,9 @@ AudioControlInterface::_InitGainLimits(multi_mix_control& Control)
 		int16	data;
 		float&	value;
 	} gainInfos[] = {
-		{ UAS_GET_MIN, 0, Control.gain.min_gain },
-		{ UAS_GET_MAX, 0, Control.gain.max_gain },
-		{ UAS_GET_RES, 0, Control.gain.granularity }
+		{ USB_AUDIO_GET_MIN, 0, Control.gain.min_gain },
+		{ USB_AUDIO_GET_MAX, 0, Control.gain.max_gain },
+		{ USB_AUDIO_GET_RES, 0, Control.gain.granularity }
 	};
 
 	Control.gain.min_gain = 0.;
@@ -1249,19 +1253,19 @@ AudioControlInterface::_ListFeatureUnitOption(uint32 controlType,
 	bool initGainLimits = false;
 
 	switch(controlType) {
-		case MuteControl:
-			id = UAS_MUTE_CONTROL;
+		case BMA_CTL_MUTE:
+			id = USB_AUDIO_MUTE_CONTROL;
 			flags = B_MULTI_MIX_ENABLE;
 			string = S_MUTE;
 			break;
-		case VolumeControl:
-			id = UAS_VOLUME_CONTROL;
+		case BMA_CTL_VOLUME:
+			id = USB_AUDIO_VOLUME_CONTROL;
 			flags = B_MULTI_MIX_GAIN;
 			string = S_GAIN;
 			initGainLimits = true;
 			break;
-		case AutoGainControl:
-			id = UAS_AUTOMATIC_GAIN_CONTROL;
+		case BMA_CTL_AUTOGAIN:
+			id = USB_AUDIO_AUTOMATIC_GAIN_CONTROL;
 			flags = B_MULTI_MIX_ENABLE;
 			name = "Auto Gain";
 			break;
@@ -1379,18 +1383,18 @@ AudioControlInterface::_ListFeatureUnitControl(int32& index, int32 parentIndex,
 		}
 
 		// First list possible Mute controls
-		_ListFeatureUnitOption(MuteControl, index, groupIndex, Info,
+		_ListFeatureUnitOption(BMA_CTL_MUTE, index, groupIndex, Info,
 				unit, channel, channelInfos[i].channels);
 
 		// Gain controls may be usefull too
-		if (_ListFeatureUnitOption(VolumeControl, index, groupIndex, Info,
+		if (_ListFeatureUnitOption(BMA_CTL_VOLUME, index, groupIndex, Info,
 				unit, channel, channelInfos[i].channels) == 0) {
 			masterIndex = (i == 0) ? groupIndex : 0 ;
 			TRACE("channel:%d set master index to %d\n", channel, masterIndex);
 		}
 
 		// Auto Gain checkbox will be listed too
-		_ListFeatureUnitOption(AutoGainControl, index, groupIndex, Info,
+		_ListFeatureUnitOption(BMA_CTL_AUTOGAIN, index, groupIndex, Info,
 			unit, channel, channelInfos[i].channels);
 
 		// Now check if the group filled with something usefull.
@@ -1427,7 +1431,7 @@ AudioControlInterface::_ListSelectorUnitControl(int32& index, int32 parentGroup,
 		multi_mix_control_info* Info, _AudioControl* control)
 {
 	SelectorUnit* selector = static_cast<SelectorUnit*>(control);
-	if (selector == 0 || selector->SubType() != IDSSelectorUnit)
+	if (selector == 0 || selector->SubType() != USB_AUDIO_AC_SELECTOR_UNIT)
 		return;
 
 	multi_mix_control* Controls = Info->controls;
@@ -1474,11 +1478,11 @@ AudioControlInterface::_ListMixControlsPage(int32& index,
 	for (AudioControlsIterator I = Map.Begin(); I != Map.End(); I++) {
 		TRACE("%s control %d listed.\n", Name, I->Value()->ID());
 		switch(I->Value()->SubType()) {
-			case IDSFeatureUnit:
+			case USB_AUDIO_AC_FEATURE_UNIT:
 				group = _ListFeatureUnitControl(index, groupIndex,
 					Info, I->Value());
 				break;
-			case IDSSelectorUnit:
+			case USB_AUDIO_AC_SELECTOR_UNIT:
 				_ListSelectorUnitControl(index, group, Info, I->Value());
 				break;
 		}
@@ -1506,7 +1510,7 @@ AudioControlInterface::ListMixControls(multi_mix_control_info* Info)
 			I != fAudioControls.End(); I++) {
 		_AudioControl* control = I->Value();
 		// filter out feature units
-		if (control->SubType() != IDSFeatureUnit)
+		if (control->SubType() != USB_AUDIO_AC_FEATURE_UNIT)
 			continue;
 
 		// ignore controls that are already in the record controls map
@@ -1514,7 +1518,8 @@ AudioControlInterface::ListMixControls(multi_mix_control_info* Info)
 			continue;
 
 		_AudioControl* sourceControl = Find(control->SourceID());
-		if (sourceControl != 0 && sourceControl->SubType() == IDSInputTerminal)
+		if (sourceControl != 0
+				&& sourceControl->SubType() == USB_AUDIO_AC_INPUT_TERMINAL)
 			InputControlsMap.Put(control->ID(), control);
 		else
 			OutputControlsMap.Put(control->ID(), control);
@@ -1541,12 +1546,12 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 		uint16 length = 0;
 		int16 data = 0;
 		switch(CS_FROM_CTLID(Info->values[i].id)) {
-			case UAS_VOLUME_CONTROL:
+			case USB_AUDIO_VOLUME_CONTROL:
 				length = 2;
 				break;
 			case 0: // Selector Unit
-			case UAS_MUTE_CONTROL:
-			case UAS_AUTOMATIC_GAIN_CONTROL:
+			case USB_AUDIO_MUTE_CONTROL:
+			case USB_AUDIO_AUTOMATIC_GAIN_CONTROL:
 				length = 1;
 				break;
 			default:
@@ -1557,7 +1562,7 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 
 		size_t actualLength = 0;
 		status_t status = gUSBModule->send_request(fDevice->USBDevice(),
-			USB_REQTYPE_INTERFACE_IN | USB_REQTYPE_CLASS, UAS_GET_CUR,
+			USB_REQTYPE_INTERFACE_IN | USB_REQTYPE_CLASS, USB_AUDIO_GET_CUR,
 			REQ_VALUE(Info->values[i].id), REQ_INDEX(Info->values[i].id),
 			length, &data, &actualLength);
 
@@ -1568,21 +1573,21 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 		}
 
 		switch(CS_FROM_CTLID(Info->values[i].id)) {
-			case UAS_VOLUME_CONTROL:
+			case USB_AUDIO_VOLUME_CONTROL:
 				Info->values[i].gain = static_cast<float>(data) / 256.;
 				TRACE("Gain control %d; channel: %d; is %f dB.\n",
 					ID_FROM_CTLID(Info->values[i].id),
 					CN_FROM_CTLID(Info->values[i].id),
 					Info->values[i].gain);
 				break;
-			case UAS_MUTE_CONTROL:
+			case USB_AUDIO_MUTE_CONTROL:
 				Info->values[i].enable = data > 0;
 				TRACE("Mute control %d; channel: %d; is %d.\n",
 					ID_FROM_CTLID(Info->values[i].id),
 					CN_FROM_CTLID(Info->values[i].id),
 					Info->values[i].enable);
 				break;
-			case UAS_AUTOMATIC_GAIN_CONTROL:
+			case USB_AUDIO_AUTOMATIC_GAIN_CONTROL:
 				Info->values[i].enable = data > 0;
 				TRACE("AGain control %d; channel: %d; is %d.\n",
 					ID_FROM_CTLID(Info->values[i].id),
@@ -1612,7 +1617,7 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 		int16 data = 0;
 
 		switch(CS_FROM_CTLID(Info->values[i].id)) {
-			case UAS_VOLUME_CONTROL:
+			case USB_AUDIO_VOLUME_CONTROL:
 				data = static_cast<int16>(Info->values[i].gain * 256.);
 				length = 2;
 				TRACE("Gain control %d; channel: %d; about to set to %f dB.\n",
@@ -1620,7 +1625,7 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 					CN_FROM_CTLID(Info->values[i].id),
 					Info->values[i].gain);
 				break;
-			case UAS_MUTE_CONTROL:
+			case USB_AUDIO_MUTE_CONTROL:
 				data = (Info->values[i].enable ? 1 : 0);
 				length = 1;
 				TRACE("Mute control %d; channel: %d; about to set to %d.\n",
@@ -1628,7 +1633,7 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 					CN_FROM_CTLID(Info->values[i].id),
 					Info->values[i].enable);
 				break;
-			case UAS_AUTOMATIC_GAIN_CONTROL:
+			case USB_AUDIO_AUTOMATIC_GAIN_CONTROL:
 				data = (Info->values[i].enable ? 1 : 0);
 				length = 1;
 				TRACE("AGain control %d; channel: %d; about to set to %d.\n",
@@ -1651,7 +1656,7 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 
 		size_t actualLength = 0;
 		status_t status = gUSBModule->send_request(fDevice->USBDevice(),
-			USB_REQTYPE_INTERFACE_OUT | USB_REQTYPE_CLASS, UAS_SET_CUR,
+			USB_REQTYPE_INTERFACE_OUT | USB_REQTYPE_CLASS, USB_AUDIO_SET_CUR,
 			REQ_VALUE(Info->values[i].id), REQ_INDEX(Info->values[i].id),
 			length, &data, &actualLength);
 
