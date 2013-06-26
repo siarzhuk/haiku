@@ -312,15 +312,15 @@ typedef struct {
 
 /* 3-byte integer */
 typedef struct {
-	uint8	data[3];
-} _PACKED usb_triplet;
+	uint8	bytes[3];
+} _PACKED usb_sam_freq;
 
 // and
 
 /*
  * Audio data formats spec
  */
-
+#if 0
 // Table 2-2 and 2-3, page 10
 typedef struct { // TODO: optimize!!!
 	uint8	lower_sam_freq[3];
@@ -335,6 +335,7 @@ typedef union {
 	usb_audio_continuous_freq_descr cont;
 	usb_audio_discrete_freq_descr   discr;
 } _PACKED usb_audio_sam_freq_descr;
+#endif 
 
 // Table 2-1, page 10
 typedef struct {
@@ -348,7 +349,8 @@ typedef struct {
 			uint8 bit_resolution;				// 8, 16 or 20 bits
 			uint8 sam_freq_type;				// 0 == continuous, 1 == a fixed
 												//		number of discrete sam freqs
-			usb_audio_sam_freq_descr	sf;		// union
+//			usb_audio_sam_freq_descr	sf;		// union
+			usb_sam_freq sam_freq[1];
 		//	uint8 sam_freq[12 * 3];
 		} _PACKED typeI;
 
@@ -357,7 +359,8 @@ typedef struct {
 			uint16 samples_per_frame;			// samples per frame
 			uint8 sam_freq_type;				// 0 == continuous, 1 == a fixed
 												//		number of discrete sam freqs
-			usb_audio_sam_freq_descr	sf;		// union
+//			usb_audio_sam_freq_descr	sf;		// union
+			usb_sam_freq sam_freq[1];
 		//	uint8 sam_freq[12 * 3];
 		} _PACKED typeII;
 
@@ -367,7 +370,8 @@ typedef struct {
 			uint8 bit_resolution;				// 8, 16 or 20 bits
 			uint8 sam_freq_type;				// 0 == continuous, 1 == a fixed
 												//		number of discrete sam freqs
-			usb_audio_sam_freq_descr	sf;		// union
+//			usb_audio_sam_freq_descr	sf;		// union
+			usb_sam_freq sam_freq[1];
 		//	uint8 sam_freq[12 * 3];
 		} _PACKED typeIII;
 

@@ -55,7 +55,9 @@ public:
 
 // protected:
 			uint8			fFormatType;
-			uint32			GetSamFreq(uint8* freq);
+			//uint32			GetSamFreq(uint8* freq);
+	static	uint32			GetSamFreq(const usb_sam_freq& freq);
+	static	usb_sam_freq	GetSamFreq(uint32 rate);
 };
 
 

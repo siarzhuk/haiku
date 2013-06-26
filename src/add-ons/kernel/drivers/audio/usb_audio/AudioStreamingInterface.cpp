@@ -121,9 +121,25 @@ _ASFormatDescriptor::~_ASFormatDescriptor()
 
 
 uint32
-_ASFormatDescriptor::GetSamFreq(uint8* freq)
+//_ASFormatDescriptor::GetSamFreq(uint8* freq)
+_ASFormatDescriptor::GetSamFreq(const usb_sam_freq& freq)
 {
-	return freq[0] | freq[1] << 8 | freq[2] << 16;
+	return freq.bytes[0] | freq.bytes[1] << 8 | freq.bytes[2] << 16;
+}
+
+
+usb_sam_freq
+_ASFormatDescriptor::GetSamFreq(uint32 samplingRate)
+{
+	usb_sam_freq freq;
+	for (size_t i = 0; i < 3; i++)
+		freq.bytes[i] = 0xFF & samplingRate >> 8 * i;
+
+//	return freq.bytes[0] | freq.bytes[1] << 8 | freq.bytes[2] << 16;
+/*	data[0]	= 0xFF & samplingRate;
+	data[1]	= 0xFF & samplingRate >> 8;
+	data[2]	= 0xFF & samplingRate >> 16; */
+	return freq;
 }
 
 
@@ -157,13 +173,16 @@ TypeIFormatDescriptor::Init(usb_format_descriptor* Descriptor)
 
 	if (fSampleFrequencyType == 0) {
 		fSampleFrequencies.PushBack(
-			GetSamFreq(Descriptor->typeI.sf.cont.lower_sam_freq));
+		//	GetSamFreq(Descriptor->typeI.sf.cont.lower_sam_freq));
+			GetSamFreq(Descriptor->typeI.sam_freq[0]));
 		fSampleFrequencies.PushBack(
-			GetSamFreq(Descriptor->typeI.sf.cont.upper_sam_freq));
+		//	GetSamFreq(Descriptor->typeI.sf.cont.upper_sam_freq));
+			GetSamFreq(Descriptor->typeI.sam_freq[1]));
 	} else
 		for (size_t i = 0; i < fSampleFrequencyType; i++)
 			fSampleFrequencies.PushBack(
-				GetSamFreq(Descriptor->typeI.sf.discr.sam_freq[i]));
+				//GetSamFreq(Descriptor->typeI.sf.discr.sam_freq[i]));
+				GetSamFreq(Descriptor->typeI.sam_freq[i]));
 
 	TRACE("fNumChannels:%d\n", fNumChannels);
 	TRACE("fSubframeSize:%d\n", fSubframeSize);

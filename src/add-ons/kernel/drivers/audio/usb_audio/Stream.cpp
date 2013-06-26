@@ -407,19 +407,20 @@ Stream::SetGlobalFormat(multi_format_info* Format)
 	// set endpoint speed	
 	uint32 samplingRate = fAlternates[fActiveAlternate]->GetSamplingRate();
 	size_t actualLength = 0;
-	uint8 data[3];
-	data[0]	= 0xFF & samplingRate;
+	usb_sam_freq freq = _ASFormatDescriptor::GetSamFreq(samplingRate);
+/*	data[0]	= 0xFF & samplingRate;
 	data[1]	= 0xFF & samplingRate >> 8;
-	data[2]	= 0xFF & samplingRate >> 16;
+	data[2]	= 0xFF & samplingRate >> 16; */
 	uint8 address = fAlternates[fActiveAlternate]->Endpoint()->fEndpointAddress;
 
 	status = gUSBModule->send_request(fDevice->fDevice,
 		USB_REQTYPE_CLASS | USB_REQTYPE_ENDPOINT_OUT,
 		USB_AUDIO_SET_CUR, USB_AUDIO_SAMPLING_FREQ_CONTROL << 8,
-		address, 3, data, &actualLength);
+		address, sizeof(freq), &freq, &actualLength);
 	
 	TRACE_ALWAYS("set_speed %02x%02x%02x for ep %#x %d: %x\n",
-		data[0], data[1], data[2], address, actualLength, status);
+		freq.bytes[0], freq.bytes[1], freq.bytes[2],
+		address, actualLength, status);
 	return status;
 }
 
