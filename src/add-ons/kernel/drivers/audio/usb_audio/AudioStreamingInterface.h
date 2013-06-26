@@ -19,7 +19,8 @@ class ASInterfaceDescriptor {
 public:
 							ASInterfaceDescriptor(
 //								usb_as_interface_descriptor_r1*	Descriptor);
-								usb_as_interface_descriptor*	Descriptor);
+								usb_audio_streaming_interface_descriptor*
+								Descriptor);
 							~ASInterfaceDescriptor();
 
 // protected:
@@ -33,7 +34,8 @@ class ASEndpointDescriptor {
 public:
 							ASEndpointDescriptor(
 								usb_endpoint_descriptor* Endpoint,
-								usb_as_cs_endpoint_descriptor* Descriptor);
+								usb_audio_streaming_endpoint_descriptor*
+								Descriptor);
 							~ASEndpointDescriptor();
 
 // protected:
@@ -50,14 +52,14 @@ class _ASFormatDescriptor {
 public:
 							_ASFormatDescriptor(
 								//usb_type_I_format_descriptor* Descriptor);
-								usb_format_descriptor* Descriptor);
+								usb_audio_format_descriptor* Descriptor);
 	virtual					~_ASFormatDescriptor();
 
 // protected:
 			uint8			fFormatType;
 			//uint32			GetSamFreq(uint8* freq);
-	static	uint32			GetSamFreq(const usb_sam_freq& freq);
-	static	usb_sam_freq	GetSamFreq(uint32 rate);
+	static	uint32			GetSamFreq(const usb_audio_sampling_freq& freq);
+	static	usb_audio_sampling_freq	GetSamFreq(uint32 rate);
 };
 
 
@@ -65,11 +67,11 @@ class TypeIFormatDescriptor : public _ASFormatDescriptor {
 public:
 							TypeIFormatDescriptor(
 								//usb_type_I_format_descriptor* Descriptor);
-								usb_format_descriptor* Descriptor);
+								usb_audio_format_descriptor* Descriptor);
 	virtual					~TypeIFormatDescriptor();
 
 			//status_t		Init(usb_type_I_format_descriptor* Descriptor);
-			status_t		Init(usb_format_descriptor* Descriptor);
+			status_t		Init(usb_audio_format_descriptor* Descriptor);
 
 // protected:
 			uint8			fNumChannels;
@@ -84,7 +86,7 @@ class TypeIIFormatDescriptor : public _ASFormatDescriptor {
 public:
 							TypeIIFormatDescriptor(
 								//usb_type_II_format_descriptor* Descriptor);
-								usb_format_descriptor* Descriptor);
+								usb_audio_format_descriptor* Descriptor);
 	virtual					~TypeIIFormatDescriptor();
 
 // protected:
@@ -99,7 +101,7 @@ class TypeIIIFormatDescriptor : public TypeIFormatDescriptor {
 public:
 							TypeIIIFormatDescriptor(
 								//usb_type_III_format_descriptor* Descriptor);
-								usb_format_descriptor* Descriptor);
+								usb_audio_format_descriptor* Descriptor);
 	virtual					~TypeIIIFormatDescriptor();
 
 // protected:

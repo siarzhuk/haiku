@@ -9,6 +9,7 @@
 
 
 #include "USB_audio_spec.h"
+#include <usb/USB_audio.h>
 #include <hmulti_audio.h>
 
 #include <util/VectorMap.h>
