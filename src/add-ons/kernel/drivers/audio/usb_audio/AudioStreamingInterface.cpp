@@ -44,15 +44,17 @@ static struct RatePair {
 //
 //
 ASInterfaceDescriptor::ASInterfaceDescriptor(
-		usb_as_interface_descriptor_r1* Descriptor)
+//		usb_as_interface_descriptor_r1* Descriptor)
+		usb_as_interface_descriptor* Descriptor)
 	:
 	fTerminalLink(0),
 	fDelay(0),
 	fFormatTag(0)
 {
+// TODO: what aboput rev 2???????	
 	fTerminalLink = Descriptor->terminal_link;
-	fDelay = Descriptor->delay;
-	fFormatTag = Descriptor->format_tag;
+	fDelay = Descriptor->r1.delay;
+	fFormatTag = Descriptor->r1.format_tag;
 
 	TRACE("fTerminalLink:%d\n", fTerminalLink);
 	TRACE("fDelay:%d\n", fDelay);
@@ -104,7 +106,8 @@ ASEndpointDescriptor::~ASEndpointDescriptor()
 
 
 _ASFormatDescriptor::_ASFormatDescriptor(
-		usb_type_I_format_descriptor* Descriptor)
+		//usb_type_I_format_descriptor* Descriptor)
+		usb_format_descriptor* Descriptor)
 	:
 	fFormatType(USB_AUDIO_FORMAT_TYPE_UNDEFINED)
 {
@@ -125,7 +128,8 @@ _ASFormatDescriptor::GetSamFreq(uint8* freq)
 
 
 TypeIFormatDescriptor::TypeIFormatDescriptor(
-		usb_type_I_format_descriptor* Descriptor)
+		//usb_type_I_format_descriptor* Descriptor)
+		usb_format_descriptor* Descriptor)
 	:
 	_ASFormatDescriptor(Descriptor),
 	fNumChannels(0),
@@ -143,22 +147,23 @@ TypeIFormatDescriptor::~TypeIFormatDescriptor()
 
 
 status_t
-TypeIFormatDescriptor::Init(usb_type_I_format_descriptor* Descriptor)
+//TypeIFormatDescriptor::Init(usb_type_I_format_descriptor* Descriptor)
+TypeIFormatDescriptor::Init(usb_format_descriptor* Descriptor)
 {
-	fNumChannels = Descriptor->nr_channels;
-	fSubframeSize = Descriptor->subframe_size;
-	fBitResolution = Descriptor->bit_resolution;
-	fSampleFrequencyType = Descriptor->sam_freq_type;
+	fNumChannels = Descriptor->typeI.nr_channels;
+	fSubframeSize = Descriptor->typeI.subframe_size;
+	fBitResolution = Descriptor->typeI.bit_resolution;
+	fSampleFrequencyType = Descriptor->typeI.sam_freq_type;
 
 	if (fSampleFrequencyType == 0) {
 		fSampleFrequencies.PushBack(
-			GetSamFreq(Descriptor->sf.cont.lower_sam_freq));
+			GetSamFreq(Descriptor->typeI.sf.cont.lower_sam_freq));
 		fSampleFrequencies.PushBack(
-			GetSamFreq(Descriptor->sf.cont.upper_sam_freq));
+			GetSamFreq(Descriptor->typeI.sf.cont.upper_sam_freq));
 	} else
 		for (size_t i = 0; i < fSampleFrequencyType; i++)
 			fSampleFrequencies.PushBack(
-				GetSamFreq(Descriptor->sf.discr.sam_freq[i]));
+				GetSamFreq(Descriptor->typeI.sf.discr.sam_freq[i]));
 
 	TRACE("fNumChannels:%d\n", fNumChannels);
 	TRACE("fSubframeSize:%d\n", fSubframeSize);
@@ -173,9 +178,11 @@ TypeIFormatDescriptor::Init(usb_type_I_format_descriptor* Descriptor)
 
 
 TypeIIFormatDescriptor::TypeIIFormatDescriptor(
-		usb_type_II_format_descriptor* Descriptor)
+		//usb_type_II_format_descriptor* Descriptor)
+		usb_format_descriptor* Descriptor)
 	:
-	_ASFormatDescriptor((usb_type_I_format_descriptor*)Descriptor),
+	//_ASFormatDescriptor((usb_type_I_format_descriptor*)Descriptor),
+	_ASFormatDescriptor(Descriptor),
 	fMaxBitRate(0),
 	fSamplesPerFrame(0),
 	fSampleFrequencyType(0),
@@ -190,9 +197,11 @@ TypeIIFormatDescriptor::~TypeIIFormatDescriptor()
 
 
 TypeIIIFormatDescriptor::TypeIIIFormatDescriptor(
-		usb_type_III_format_descriptor* Descriptor)
+		//usb_type_III_format_descriptor* Descriptor)
+		usb_format_descriptor* Descriptor)
 	:
-	TypeIFormatDescriptor((usb_type_I_format_descriptor*)Descriptor)
+//	TypeIFormatDescriptor((usb_type_I_format_descriptor*)Descriptor)
+	TypeIFormatDescriptor(Descriptor)
 {
 }
 
@@ -415,14 +424,16 @@ AudioStreamingInterface::AudioStreamingInterface(
 					case USB_AUDIO_AS_GENERAL:
 						if (ASInterface == 0)
 							ASInterface = new ASInterfaceDescriptor(
-								(usb_as_interface_descriptor_r1*) Header);
+								//(usb_as_interface_descriptor_r1*) Header);
+								(usb_as_interface_descriptor*) Header);
 						else
 							TRACE_ALWAYS("Duplicate AStream interface ignored.\n");
 						break;
 					case USB_AUDIO_AS_FORMAT_TYPE:
 						if (ASFormat == 0)
 							ASFormat = new TypeIFormatDescriptor(
-								(usb_type_I_format_descriptor*) Header);
+								//(usb_type_I_format_descriptor*) Header);
+								(usb_format_descriptor*) Header);
 						else
 							TRACE_ALWAYS("Duplicate AStream format ignored.\n");
 						break;

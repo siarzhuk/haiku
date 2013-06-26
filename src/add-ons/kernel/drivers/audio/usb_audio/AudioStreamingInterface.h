@@ -18,7 +18,8 @@
 class ASInterfaceDescriptor {
 public:
 							ASInterfaceDescriptor(
-								usb_as_interface_descriptor_r1*	Descriptor);
+//								usb_as_interface_descriptor_r1*	Descriptor);
+								usb_as_interface_descriptor*	Descriptor);
 							~ASInterfaceDescriptor();
 
 // protected:
@@ -48,7 +49,8 @@ public:
 class _ASFormatDescriptor {
 public:
 							_ASFormatDescriptor(
-								usb_type_I_format_descriptor* Descriptor);
+								//usb_type_I_format_descriptor* Descriptor);
+								usb_format_descriptor* Descriptor);
 	virtual					~_ASFormatDescriptor();
 
 // protected:
@@ -60,10 +62,12 @@ public:
 class TypeIFormatDescriptor : public _ASFormatDescriptor {
 public:
 							TypeIFormatDescriptor(
-								usb_type_I_format_descriptor* Descriptor);
+								//usb_type_I_format_descriptor* Descriptor);
+								usb_format_descriptor* Descriptor);
 	virtual					~TypeIFormatDescriptor();
 
-			status_t		Init(usb_type_I_format_descriptor* Descriptor);
+			//status_t		Init(usb_type_I_format_descriptor* Descriptor);
+			status_t		Init(usb_format_descriptor* Descriptor);
 
 // protected:
 			uint8			fNumChannels;
@@ -77,7 +81,8 @@ public:
 class TypeIIFormatDescriptor : public _ASFormatDescriptor {
 public:
 							TypeIIFormatDescriptor(
-								usb_type_II_format_descriptor* Descriptor);
+								//usb_type_II_format_descriptor* Descriptor);
+								usb_format_descriptor* Descriptor);
 	virtual					~TypeIIFormatDescriptor();
 
 // protected:
@@ -91,7 +96,8 @@ public:
 class TypeIIIFormatDescriptor : public TypeIFormatDescriptor {
 public:
 							TypeIIIFormatDescriptor(
-								usb_type_III_format_descriptor* Descriptor);
+								//usb_type_III_format_descriptor* Descriptor);
+								usb_format_descriptor* Descriptor);
 	virtual					~TypeIIIFormatDescriptor();
 
 // protected:

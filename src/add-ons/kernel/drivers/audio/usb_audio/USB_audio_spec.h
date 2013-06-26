@@ -18,7 +18,7 @@ extern "C" {
 
 // Audio Control descriptors
 // header descriptor
-typedef struct {
+/*typedef struct {
 	uint8	length;
 	uint8	descriptor_type;		// CS_INTERFACE descriptor type (0x24)
 	uint8	descriptor_subtype; 	// HEADER
@@ -26,21 +26,33 @@ typedef struct {
 	uint16	total_length;			//
 	uint8	in_collection;			// # of audiostreaming units
 	uint8	interface_numbers[1];	// or more
-} _PACKED usb_audiocontrol_header_descriptor_r1;
+} _PACKED usb_audiocontrol_header_descriptor_r1;*/
 
 typedef struct {
 	uint8	length;
 	uint8	descriptor_type;		// CS_INTERFACE descriptor type (0x24)
 	uint8	descriptor_subtype; 	// HEADER
 	uint16	bcd_release_no;			// Audio Device Class Specification relno
-	uint8	function_category;		// this Audio function Category
-	uint16	total_length;			//
-	uint8	bm_controls;			// bitmap of controls
+	union {
+		struct {
+			uint16	total_length;			//
+			uint8	in_collection;			// # of audiostreaming units
+			uint8	interface_numbers[1];	// or more
+		} _PACKED r1;
+
+		struct {
+			uint8	function_category;		// this Audio function Category
+			uint16	total_length;			//
+			uint8	bm_controls;			// bitmap of controls
+		} _PACKED r2;
+
+	};
+
 } _PACKED usb_audiocontrol_header_descriptor;
 
 // input terminal descriptor
 // Table 4-3, page 39
-typedef struct {
+/*typedef struct {
 	uint8	length;
 	uint8	descriptor_type;		// CS_INTERFACE descriptor type (0x24)
 	uint8	descriptor_subtype; 	// INPUT_TERMINAL
@@ -54,7 +66,7 @@ typedef struct {
 									//		name of first logical channel
 	uint8	terminal;				// index of string descr,
 									//		name of Input Terminal
-} _PACKED usb_input_terminal_descriptor_r1;
+} _PACKED usb_input_terminal_descriptor_r1; */
 
 // Table 4-9, page 53
 typedef struct {
@@ -64,20 +76,36 @@ typedef struct {
 	uint8	terminal_id;			//
 	uint16	terminal_type;			// 0x0101 ?
 	uint8	assoc_terminal;			// OT terminal ID of corresponding outp
-	uint8	clock_source_id;		//
-	uint8	num_channels;			// stereo = 2
-	uint32	channel_config;			// spatial location of two channels
-									//		(bitmap 0x03 is plain stereo)
-	uint8	channel_names;			// index of string descr,
-									//		name of first logical channel
-	uint16	bm_controls;			//
-	uint8	terminal;				// index of string descr,
-									//		name of Input Terminal
+
+	union {
+		struct {
+			uint8	num_channels;			// stereo = 2
+			uint8	channel_config;			// spatial location of two channels
+											//		(bitmap 0x03 is plain stereo)
+			uint8	channel_names;			// index of string descr,
+											//		name of first logical channel
+			uint8	terminal;				// index of string descr,
+											//		name of Input Terminal
+		} _PACKED r1;
+
+		struct {
+			uint8	clock_source_id;		//
+			uint8	num_channels;			// stereo = 2
+			uint32	channel_config;			// spatial location of two channels
+											//		(bitmap 0x03 is plain stereo)
+			uint8	channel_names;			// index of string descr,
+											//		name of first logical channel
+			uint16	bm_controls;			//
+			uint8	terminal;				// index of string descr,
+											//		name of Input Terminal
+		} _PACKED r2;
+
+	};
 } _PACKED usb_input_terminal_descriptor;
 
 // output terminal descriptor
 // Table 4-4, page 40
-typedef struct {
+/*typedef struct {
 	uint8	length;
 	uint8	descriptor_type;		// CS_INTERFACE descriptor type (0x24)
 	uint8	descriptor_subtype; 	// OUTPUT_TERMINAL
@@ -86,9 +114,9 @@ typedef struct {
 	uint8	assoc_terminal;			// OT terminal ID of corresponding outp
 	uint8	source_id;				// ID of the unit or terminal to which
 									//		this terminal is connected
-	uint8	terminal;				// index of string descr,
+	uint8	terminal;		// index of string descr,
 									//		name of Input Terminal
-} _PACKED usb_output_terminal_descriptor_r1;
+} _PACKED usb_output_terminal_descriptor_r1; */
 
 typedef struct {
 	uint8	length;
@@ -99,10 +127,20 @@ typedef struct {
 	uint8	assoc_terminal;			// OT terminal ID of corresponding outp
 	uint8	source_id;				// ID of the unit or terminal to which
 									//		this terminal is connected
-	uint8	clock_source_id;		//
-	uint16	bm_controls;			//
-	uint8	terminal;				// index of string descr,
+	union {
+		struct {
+			uint8	terminal;		// index of string descr,
 									//		name of Input Terminal
+		} _PACKED r1;
+
+		struct {
+			uint8	clock_source_id;//
+			uint16	bm_controls;	//
+			uint8	terminal;		// index of string descr,
+									//		name of Input Terminal
+		} _PACKED r2;
+
+	};
 } _PACKED usb_output_terminal_descriptor;
 
 
@@ -149,7 +187,7 @@ typedef struct {
 
 // feature unit descriptor
 // Table 4-7, page 43
-typedef struct {
+/*typedef struct {
 	uint8	length;
 	uint8	descriptor_type;		// CS_INTERFACE descriptor type (0x24)
 	uint8	descriptor_subtype; 	// FEATURE_UNIT
@@ -160,9 +198,9 @@ typedef struct {
 	uint8	bma_controls[1];		// the size of element must be equal
 									//		to control_size!!
 									// 	the channel 0 is master one!
-/*	uint8	feature_string;		*/  // be afraid of the variable size
+/ *	uint8	feature_string;		* /  // be afraid of the variable size
 									//		of bma_controls array!
-} _PACKED usb_feature_unit_descriptor_r1;
+} _PACKED usb_feature_unit_descriptor_r1; */
 
 typedef struct {
 	uint8	length;
@@ -171,9 +209,23 @@ typedef struct {
 	uint8	unit_id;				// unique within audio function
 	uint8	source_id;				// id of the unit or terminal to
 									//		which this unit is connected
-	uint32	bma_controls[1];		// the channel 0 is master one!
-/*	uint8	feature_string;		*/  // be afraid of the variable size of
-									//		bma_controls array!
+	union {
+		struct {
+			uint8	control_size;			// size of element in bma_controls array
+			uint8	bma_controls[1];		// the size of element must be equal
+											//		to control_size!!
+											// 	the channel 0 is master one!
+		/*	uint8	feature_string;		*/  // be afraid of the variable size
+											//		of bma_controls array!
+		} _PACKED r1;
+
+		struct {
+			uint32	bma_controls[1];		// the channel 0 is master one!
+		/*	uint8	feature_string;		*/  // be afraid of the variable size of
+											//		bma_controls array!
+		} _PACKED r2;
+		
+	};
 } _PACKED usb_feature_unit_descriptor;
 
 // processing unit descriptor
@@ -211,27 +263,37 @@ typedef struct {
 
 // Class-specific AS interface descriptor
 // Table 4-19, page 60
-typedef struct {
+/*typedef struct {
 	uint8	length;					// 7
 	uint8	descriptor_type;		// CS_INTERFACE descriptor type (0x24)
 	uint8	descriptor_subtype; 	// UAS_AS_GENERAL
 	uint8	terminal_link;			// terminal ID to which this endp is connected
 	uint8	delay;					// delay in # of frames
 	uint16	format_tag;				// wFormatTag, 0x0001 = PCM
-} _PACKED usb_as_interface_descriptor_r1;
+} _PACKED usb_as_interface_descriptor_r1;*/
 
 typedef struct {
 	uint8	length;					// 7
 	uint8	descriptor_type;		// CS_INTERFACE descriptor type (0x24)
 	uint8	descriptor_subtype; 	// UAS_AS_GENERAL
 	uint8	terminal_link;			// terminal ID to which this endp is connected
-	uint8	bm_controls;			// controls bitmap
-	uint8	format_type;			// type of audio streaming use
-	uint32	bm_formats;				// audio data formats to be used with
-									//		this interface
-	uint8	num_output_pins; 		// number of physical channels in the claster
-	uint32	channel_config;		 	// spatial location of channels
-	uint8	channel_names;		 	// id of name string of first physical channel
+	union {
+		struct {
+			uint8	delay;					// delay in # of frames
+			uint16	format_tag;				// wFormatTag, 0x0001 = PCM
+		} _PACKED r1;
+
+		struct {
+			uint8	bm_controls;			// controls bitmap
+			uint8	format_type;			// type of audio streaming use
+			uint32	bm_formats;				// audio data formats to be used with
+											//		this interface
+			uint8	num_output_pins; 		// number of physical channels in the claster
+			uint32	channel_config;		 	// spatial location of channels
+			uint8	channel_names;		 	// id of name string of first physical channel
+		} _PACKED r2;
+
+	};
 } _PACKED usb_as_interface_descriptor;
 
 // Class-specific As Isochronous Audio Data Endpoint descriptor
@@ -260,7 +322,7 @@ typedef struct {
  */
 
 // Table 2-2 and 2-3, page 10
-typedef struct {
+typedef struct { // TODO: optimize!!!
 	uint8	lower_sam_freq[3];
 	uint8	upper_sam_freq[3];
 } _PACKED usb_audio_continuous_freq_descr;
@@ -280,17 +342,40 @@ typedef struct {
 	uint8 descriptor_type;				// UAS_CS_INTERFACE (0x24)
 	uint8 descriptor_subtype;			// UAS_FORMAT_TYPE (0x02)
 	uint8 format_type;					// UAF_FORMAT_TYPE_I (0x01)
-	uint8 nr_channels;					// hopefully 2
-	uint8 subframe_size;				// 1, 2, or 4 bytes
-	uint8 bit_resolution;				// 8, 16 or 20 bits
-	uint8 sam_freq_type;				// 0 == continuous, 1 == a fixed
-										//		number of discrete sam freqs
-	usb_audio_sam_freq_descr	sf;		// union
-//	uint8 sam_freq[12 * 3];
-} _PACKED usb_type_I_format_descriptor;
+		struct {
+			uint8 nr_channels;					// hopefully 2
+			uint8 subframe_size;				// 1, 2, or 4 bytes
+			uint8 bit_resolution;				// 8, 16 or 20 bits
+			uint8 sam_freq_type;				// 0 == continuous, 1 == a fixed
+												//		number of discrete sam freqs
+			usb_audio_sam_freq_descr	sf;		// union
+		//	uint8 sam_freq[12 * 3];
+		} _PACKED typeI;
+
+		struct {
+			uint16 max_bit_rate;				// max bit rate in kbits/sec
+			uint16 samples_per_frame;			// samples per frame
+			uint8 sam_freq_type;				// 0 == continuous, 1 == a fixed
+												//		number of discrete sam freqs
+			usb_audio_sam_freq_descr	sf;		// union
+		//	uint8 sam_freq[12 * 3];
+		} _PACKED typeII;
+
+		struct {
+			uint8 nr_channels;					// hopefully 2
+			uint8 subframe_size;				// 1, 2, or 4 bytes
+			uint8 bit_resolution;				// 8, 16 or 20 bits
+			uint8 sam_freq_type;				// 0 == continuous, 1 == a fixed
+												//		number of discrete sam freqs
+			usb_audio_sam_freq_descr	sf;		// union
+		//	uint8 sam_freq[12 * 3];
+		} _PACKED typeIII;
+
+//} _PACKED usb_type_I_format_descriptor;
+} _PACKED usb_format_descriptor;
 
 // Table 2-4, page 13
-typedef struct {
+/*typedef struct {
 	uint8 length;						// 0e for
 	uint8 descriptor_type;				// UAS_CS_INTERFACE (0x24)
 	uint8 descriptor_subtype;			// UAS_FORMAT_TYPE (0x02)
@@ -316,7 +401,7 @@ typedef struct {
 										//		number of discrete sam freqs
 	usb_audio_sam_freq_descr	sf;		// union
 //	uint8 sam_freq[12 * 3];
-} _PACKED usb_type_III_format_descriptor;
+} _PACKED usb_type_III_format_descriptor;*/
 
 #ifdef __cplusplus
 }
