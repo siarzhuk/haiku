@@ -9,8 +9,6 @@
 
 #include <usb/USB_audio.h>
 
-#include "USB_audio_spec.h"
-
 #include "Device.h"
 #include "Driver.h"
 #include "Settings.h"
@@ -271,8 +269,6 @@ InputTerminal::InputTerminal(AudioControlInterface*	interface,
 	:
 	_AudioChannelCluster<_Terminal>(interface, Header)
 {
-//	usb_input_terminal_descriptor_r1* Terminal
-//		= (usb_input_terminal_descriptor_r1*) Header;
 	usb_audio_input_terminal_descriptor* Terminal
 		= (usb_audio_input_terminal_descriptor*) Header;
 	fID					= Terminal->terminal_id;
@@ -290,8 +286,6 @@ InputTerminal::InputTerminal(AudioControlInterface*	interface,
 		fChannelNames		= Terminal->r1.channel_names;
 		fStringIndex		= Terminal->r1.terminal;
 	} else {
-		//usb_input_terminal_descriptor* Terminal
-		//	= (usb_input_terminal_descriptor*) Header;
 		fClockSourceId		= Terminal->r2.clock_source_id;
 		fOutChannelsNumber	= Terminal->r2.num_channels;
 		fChannelsConfig		= Terminal->r2.channel_config;
@@ -322,8 +316,6 @@ OutputTerminal::OutputTerminal(AudioControlInterface*	interface,
 	:
 	_Terminal(interface, Header)
 {
-//	usb_output_terminal_descriptor_r1* Terminal
-//		= (usb_output_terminal_descriptor_r1*) Header;
 	usb_audio_output_terminal_descriptor* Terminal
 		= (usb_audio_output_terminal_descriptor*) Header;
 
@@ -341,9 +333,6 @@ OutputTerminal::OutputTerminal(AudioControlInterface*	interface,
 	if (fInterface->SpecReleaseNumber() < 0x200) {
 		fStringIndex = Terminal->r1.terminal;
 	} else {
-//		usb_output_terminal_descriptor* Terminal
-//			= (usb_output_terminal_descriptor*) Header;
-
 		fClockSourceId	= Terminal->r2.clock_source_id;
 		fControlsBitmap	= Terminal->r2.bm_controls;
 		fStringIndex	= Terminal->r2.terminal;
@@ -510,8 +499,6 @@ FeatureUnit::FeatureUnit(AudioControlInterface*	interface,
 	uint8* ControlsBitmapPointer = (uint8*)&Feature->r2.bma_controls[0];
 
 	if (fInterface->SpecReleaseNumber() < 0x200) {
-//		usb_feature_unit_descriptor_r1* Feature
-//			= (usb_feature_unit_descriptor_r1*)Header;
 		controlSize = Feature->r1.control_size;
 		channelsCount = (Feature->length - 7) / Feature->r1.control_size;
 		ControlsBitmapPointer = &Feature->r1.bma_controls[0];
@@ -1007,9 +994,6 @@ AudioControlInterface::InitACHeader(size_t interface,
 	TRACE("ADCSpecification:%#06x\n", fADCSpecification);
 
 	if (fADCSpecification < 0x200) {
-//		usb_audiocontrol_header_descriptor_r1* Header1
-//			= (usb_audiocontrol_header_descriptor_r1*) Header;
-
 		TRACE("InterfacesCount:%d\n",	Header->r1.in_collection);
 		for (size_t i = 0; i < Header->r1.in_collection; i++) {
 			fStreams.PushBack(Header->r1.interface_numbers[i]);

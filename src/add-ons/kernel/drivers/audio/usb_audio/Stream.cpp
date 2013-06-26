@@ -313,7 +313,6 @@ Stream::_TransferCallback(void* cookie, int32 status, void* data,
 
 	release_sem_etc(stream->fDevice->fBuffersReadySem, 1, B_DO_NOT_RESCHEDULE);
 
-	// TRACE_ALWAYS("st:%#010x, len:%d -> %#010x\n", status, actualLength, result);
 	TRACE("st:%#010x, data:%#010x, len:%d\n", status, data, actualLength);
 }
 
