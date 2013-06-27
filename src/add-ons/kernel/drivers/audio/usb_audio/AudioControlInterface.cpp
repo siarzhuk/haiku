@@ -9,8 +9,6 @@
 
 #include <usb/USB_audio.h>
 
-#include "USB_audio_spec.h"
-
 #include "Device.h"
 #include "Driver.h"
 #include "Settings.h"
@@ -351,8 +349,9 @@ InputTerminal::InputTerminal(AudioControlInterface*	interface,
 	:
 	_AudioChannelCluster<_Terminal>(interface, Header)
 {
-	usb_input_terminal_descriptor* Terminal
-		= (usb_input_terminal_descriptor*) Header;
+	usb_audio_input_terminal_descriptor* Terminal
+		= (usb_audio_input_terminal_descriptor*) Header;
+
 	fID					= Terminal->terminal_id;
 	fTerminalType		= Terminal->terminal_type;
 	fAssociatedTerminal = Terminal->assoc_terminal;
@@ -398,10 +397,8 @@ OutputTerminal::OutputTerminal(AudioControlInterface*	interface,
 	:
 	_Terminal(interface, Header)
 {
-//	usb_output_terminal_descriptor_r1* Terminal
-//		= (usb_output_terminal_descriptor_r1*) Header;
-	usb_output_terminal_descriptor* Terminal
-		= (usb_output_terminal_descriptor*) Header;
+	usb_audio_output_terminal_descriptor* Terminal
+		= (usb_audio_output_terminal_descriptor*) Header;
 
 	fID					= Terminal->terminal_id;
 	fTerminalType		= Terminal->terminal_type;
@@ -442,8 +439,8 @@ MixerUnit::MixerUnit(AudioControlInterface*	interface,
 	_AudioChannelCluster<_AudioControl>(interface, Header),
 	fControlsBitmap(0)
 {
-	usb_mixer_unit_descriptor* Mixer
-		= (usb_mixer_unit_descriptor*) Header;
+	usb_audio_mixer_unit_descriptor* Mixer
+		= (usb_audio_mixer_unit_descriptor*) Header;
 
 	fID = Mixer->unit_id;
 	TRACE("Mixer ID:%d >>>\n", fID);
@@ -458,8 +455,8 @@ MixerUnit::MixerUnit(AudioControlInterface*	interface,
 	uint8 mixerControlsSize = 0;
 
 	if (fInterface->SpecReleaseNumber() < 0x200) {
-		usb_output_channels_descriptor_r1* OutChannels
-			= (usb_output_channels_descriptor_r1*)
+		usb_audio_output_channels_descriptor_r1* OutChannels
+			= (usb_audio_output_channels_descriptor_r1*)
 			&Mixer->input_pins[Mixer->num_input_pins];
 
 		fOutChannelsNumber	= OutChannels->num_output_pins;
@@ -470,8 +467,8 @@ MixerUnit::MixerUnit(AudioControlInterface*	interface,
 		mixerControlsSize = Mixer->length - 10 - Mixer->num_input_pins;
 		fStringIndex = *(mixerControlsData + mixerControlsSize);
 	} else {
-		usb_output_channels_descriptor* OutChannels
-			= (usb_output_channels_descriptor*)
+		usb_audio_output_channels_descriptor* OutChannels
+			= (usb_audio_output_channels_descriptor*)
 			&Mixer->input_pins[Mixer->num_input_pins];
 
 		fOutChannelsNumber	= OutChannels->num_output_pins;
@@ -513,8 +510,8 @@ SelectorUnit::SelectorUnit(AudioControlInterface*	interface,
 	_AudioControl(interface, Header),
 	fControlsBitmap(0)
 {
-	usb_selector_unit_descriptor* Selector
-		= (usb_selector_unit_descriptor*) Header;
+	usb_audio_selector_unit_descriptor* Selector
+		= (usb_audio_selector_unit_descriptor*) Header;
 
 	fID = Selector->unit_id;
 	TRACE("Selector ID:%d >>>\n", fID);
@@ -569,8 +566,8 @@ FeatureUnit::FeatureUnit(AudioControlInterface*	interface,
 	:
 	_AudioControl(interface, Header)
 {
-	usb_feature_unit_descriptor* Feature
-		= (usb_feature_unit_descriptor*) Header;
+	usb_audio_feature_unit_descriptor* Feature
+		= (usb_audio_feature_unit_descriptor*) Header;
 
 	fID = Feature->unit_id;
 	TRACE("Feature ID:%d >>>\n", fID);
@@ -725,8 +722,8 @@ EffectUnit::EffectUnit(AudioControlInterface*	interface,
 	:
 	_AudioControl(interface, Header)
 {
-	usb_input_terminal_descriptor* D
-		= (usb_input_terminal_descriptor*) Header;
+	usb_audio_input_terminal_descriptor* D
+		= (usb_audio_input_terminal_descriptor*) Header;
 	TRACE("Effect Unit:%d >>>\n",	D->terminal_id);
 }
 
@@ -743,8 +740,8 @@ ProcessingUnit::ProcessingUnit(AudioControlInterface*	interface,
 	fProcessType(0),
 	fControlsBitmap(0)
 {
-	usb_processing_unit_descriptor* Processing
-		= (usb_processing_unit_descriptor*) Header;
+	usb_audio_processing_unit_descriptor* Processing
+		= (usb_audio_processing_unit_descriptor*) Header;
 
 	fID = Processing->unit_id;
 	TRACE("Processing ID:%d >>>\n", fID);
@@ -759,16 +756,16 @@ ProcessingUnit::ProcessingUnit(AudioControlInterface*	interface,
 	}
 
 	if (fInterface->SpecReleaseNumber() < 0x200) {
-		usb_output_channels_descriptor_r1* OutChannels
-			= (usb_output_channels_descriptor_r1*)
+		usb_audio_output_channels_descriptor_r1* OutChannels
+			= (usb_audio_output_channels_descriptor_r1*)
 			&Processing->input_pins[Processing->num_input_pins];
 
 		fOutChannelsNumber	= OutChannels->num_output_pins;
 		fChannelsConfig		= OutChannels->channel_config;
 		fChannelNames		= OutChannels->channel_names;
 	} else {
-		usb_output_channels_descriptor* OutChannels
-			= (usb_output_channels_descriptor*)
+		usb_audio_output_channels_descriptor* OutChannels
+			= (usb_audio_output_channels_descriptor*)
 			&Processing->input_pins[Processing->num_input_pins];
 
 		fOutChannelsNumber	= OutChannels->num_output_pins;
@@ -810,8 +807,8 @@ ExtensionUnit::ExtensionUnit(AudioControlInterface*	interface,
 	fExtensionCode(0),
 	fControlsBitmap(0)
 {
-	usb_extension_unit_descriptor* Extension
-		= (usb_extension_unit_descriptor*) Header;
+	usb_audio_extension_unit_descriptor* Extension
+		= (usb_audio_extension_unit_descriptor*) Header;
 
 	fID = Extension->unit_id;
 	TRACE("Extension ID:%d >>>\n", fID);
@@ -826,16 +823,16 @@ ExtensionUnit::ExtensionUnit(AudioControlInterface*	interface,
 	}
 
 	if (fInterface->SpecReleaseNumber() < 0x200) {
-		usb_output_channels_descriptor_r1* OutChannels
-			= (usb_output_channels_descriptor_r1*)
+		usb_audio_output_channels_descriptor_r1* OutChannels
+			= (usb_audio_output_channels_descriptor_r1*)
 			&Extension->input_pins[Extension->num_input_pins];
 
 		fOutChannelsNumber	= OutChannels->num_output_pins;
 		fChannelsConfig		= OutChannels->channel_config;
 		fChannelNames		= OutChannels->channel_names;
 	} else {
-		usb_output_channels_descriptor* OutChannels
-			= (usb_output_channels_descriptor*)
+		usb_audio_output_channels_descriptor* OutChannels
+			= (usb_audio_output_channels_descriptor*)
 			&Extension->input_pins[Extension->num_input_pins];
 
 		fOutChannelsNumber	= OutChannels->num_output_pins;
@@ -875,8 +872,8 @@ ClockSource::ClockSource(AudioControlInterface*	interface,
 	:
 	_AudioControl(interface, Header)
 {
-	usb_input_terminal_descriptor* descriptor
-		= (usb_input_terminal_descriptor*) Header;
+	usb_audio_input_terminal_descriptor* descriptor
+		= (usb_audio_input_terminal_descriptor*) Header;
 	TRACE("Clock Source:%d >>>\n",	descriptor->terminal_id);
 }
 
@@ -891,8 +888,8 @@ ClockSelector::ClockSelector(AudioControlInterface*	interface,
 	:
 	_AudioControl(interface, Header)
 {
-	usb_input_terminal_descriptor* descriptor
-		= (usb_input_terminal_descriptor*) Header;
+	usb_audio_input_terminal_descriptor* descriptor
+		= (usb_audio_input_terminal_descriptor*) Header;
 	TRACE("Clock Selector:%d >>>\n", descriptor->terminal_id);
 }
 
@@ -907,9 +904,9 @@ ClockMultiplier::ClockMultiplier(AudioControlInterface*	interface,
 	:
 	_AudioControl(interface, Header)
 {
-	usb_input_terminal_descriptor* descriptor
-		= (usb_input_terminal_descriptor*) Header;
-	TRACE("Clock Multiplier:%d >>>\n", descriptor->terminal_id);
+	usb_audio_input_terminal_descriptor* descriptor
+		= (usb_audio_input_terminal_descriptor*) Header;
+	TRACE("Clock Multiplier:%d >>>\n",	descriptor->terminal_id);
 }
 
 
@@ -923,8 +920,8 @@ SampleRateConverter::SampleRateConverter(AudioControlInterface*	interface,
 	:
 	_AudioControl(interface, Header)
 {
-	usb_input_terminal_descriptor* descriptor
-		= (usb_input_terminal_descriptor*) Header;
+	usb_audio_input_terminal_descriptor* descriptor
+		= (usb_audio_input_terminal_descriptor*) Header;
 	TRACE("Sample Rate Converter:%d >>>\n",	descriptor->terminal_id);
 }
 

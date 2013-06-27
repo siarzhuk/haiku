@@ -1,6 +1,6 @@
 /*
  *	Driver for USB Audio Device Class devices.
- *	Copyright (c) 2009,10,12 S.Zharski <imker@gmx.li>
+ *	Copyright (c) 2009-13 S.Zharski <imker@gmx.li>
  *	Distributed under the tems of the MIT license.
  *
  */
@@ -8,9 +8,7 @@
 
 #include "AudioStreamingInterface.h"
 
-
 #include <usb/USB_audio.h>
-#include "USB_audio_spec.h"
 
 #include "Driver.h"
 #include "Settings.h"
@@ -44,8 +42,7 @@ static struct RatePair {
 //
 //
 ASInterfaceDescriptor::ASInterfaceDescriptor(
-//		usb_as_interface_descriptor_r1* Descriptor)
-		usb_as_interface_descriptor* Descriptor)
+		usb_audio_streaming_interface_descriptor* Descriptor)
 	:
 	fTerminalLink(0),
 	fDelay(0),
@@ -70,7 +67,7 @@ ASInterfaceDescriptor::~ASInterfaceDescriptor()
 
 
 ASEndpointDescriptor::ASEndpointDescriptor(usb_endpoint_descriptor* Endpoint,
-		usb_as_cs_endpoint_descriptor* Descriptor)
+		usb_audio_streaming_endpoint_descriptor* Descriptor)
 	:
 	fCSAttributes(0),
 	fLockDelayUnits(0),
@@ -79,9 +76,6 @@ ASEndpointDescriptor::ASEndpointDescriptor(usb_endpoint_descriptor* Endpoint,
 	fEndpointAddress(0),
 	fEndpointAttributes(0)
 {
-//	usb_audiocontrol_header_descriptor* Header
-//		= (usb_audiocontrol_header_descriptor*)Interface->generic[i];
-
 	fCSAttributes = Descriptor->attributes;
 	fLockDelayUnits = Descriptor->lock_delay_units;
 	fLockDelay = Descriptor->lock_delay;
@@ -106,8 +100,7 @@ ASEndpointDescriptor::~ASEndpointDescriptor()
 
 
 _ASFormatDescriptor::_ASFormatDescriptor(
-		//usb_type_I_format_descriptor* Descriptor)
-		usb_format_descriptor* Descriptor)
+		usb_audio_format_descriptor* Descriptor)
 	:
 	fFormatType(USB_AUDIO_FORMAT_TYPE_UNDEFINED)
 {
@@ -121,17 +114,16 @@ _ASFormatDescriptor::~_ASFormatDescriptor()
 
 
 uint32
-//_ASFormatDescriptor::GetSamFreq(uint8* freq)
-_ASFormatDescriptor::GetSamFreq(const usb_sam_freq& freq)
+_ASFormatDescriptor::GetSamFreq(const usb_audio_sampling_freq& freq)
 {
 	return freq.bytes[0] | freq.bytes[1] << 8 | freq.bytes[2] << 16;
 }
 
-
-usb_sam_freq
+// TODO: beautify!!!
+usb_audio_sampling_freq
 _ASFormatDescriptor::GetSamFreq(uint32 samplingRate)
 {
-	usb_sam_freq freq;
+	usb_audio_sampling_freq freq;
 	for (size_t i = 0; i < 3; i++)
 		freq.bytes[i] = 0xFF & samplingRate >> 8 * i;
 
@@ -144,8 +136,7 @@ _ASFormatDescriptor::GetSamFreq(uint32 samplingRate)
 
 
 TypeIFormatDescriptor::TypeIFormatDescriptor(
-		//usb_type_I_format_descriptor* Descriptor)
-		usb_format_descriptor* Descriptor)
+		usb_audio_format_descriptor* Descriptor)
 	:
 	_ASFormatDescriptor(Descriptor),
 	fNumChannels(0),
@@ -163,8 +154,7 @@ TypeIFormatDescriptor::~TypeIFormatDescriptor()
 
 
 status_t
-//TypeIFormatDescriptor::Init(usb_type_I_format_descriptor* Descriptor)
-TypeIFormatDescriptor::Init(usb_format_descriptor* Descriptor)
+TypeIFormatDescriptor::Init(usb_audio_format_descriptor* Descriptor)
 {
 	fNumChannels = Descriptor->typeI.nr_channels;
 	fSubframeSize = Descriptor->typeI.subframe_size;
@@ -173,16 +163,13 @@ TypeIFormatDescriptor::Init(usb_format_descriptor* Descriptor)
 
 	if (fSampleFrequencyType == 0) {
 		fSampleFrequencies.PushBack(
-		//	GetSamFreq(Descriptor->typeI.sf.cont.lower_sam_freq));
-			GetSamFreq(Descriptor->typeI.sam_freq[0]));
+			GetSamFreq(Descriptor->typeI.sam_freqs[0]));
 		fSampleFrequencies.PushBack(
-		//	GetSamFreq(Descriptor->typeI.sf.cont.upper_sam_freq));
-			GetSamFreq(Descriptor->typeI.sam_freq[1]));
+			GetSamFreq(Descriptor->typeI.sam_freqs[1]));
 	} else
 		for (size_t i = 0; i < fSampleFrequencyType; i++)
 			fSampleFrequencies.PushBack(
-				//GetSamFreq(Descriptor->typeI.sf.discr.sam_freq[i]));
-				GetSamFreq(Descriptor->typeI.sam_freq[i]));
+				GetSamFreq(Descriptor->typeI.sam_freqs[i]));
 
 	TRACE("fNumChannels:%d\n", fNumChannels);
 	TRACE("fSubframeSize:%d\n", fSubframeSize);
@@ -197,10 +184,8 @@ TypeIFormatDescriptor::Init(usb_format_descriptor* Descriptor)
 
 
 TypeIIFormatDescriptor::TypeIIFormatDescriptor(
-		//usb_type_II_format_descriptor* Descriptor)
-		usb_format_descriptor* Descriptor)
+		usb_audio_format_descriptor* Descriptor)
 	:
-	//_ASFormatDescriptor((usb_type_I_format_descriptor*)Descriptor),
 	_ASFormatDescriptor(Descriptor),
 	fMaxBitRate(0),
 	fSamplesPerFrame(0),
@@ -216,10 +201,8 @@ TypeIIFormatDescriptor::~TypeIIFormatDescriptor()
 
 
 TypeIIIFormatDescriptor::TypeIIIFormatDescriptor(
-		//usb_type_III_format_descriptor* Descriptor)
-		usb_format_descriptor* Descriptor)
+		usb_audio_format_descriptor* Descriptor)
 	:
-//	TypeIFormatDescriptor((usb_type_I_format_descriptor*)Descriptor)
 	TypeIFormatDescriptor(Descriptor)
 {
 }
@@ -443,16 +426,14 @@ AudioStreamingInterface::AudioStreamingInterface(
 					case USB_AUDIO_AS_GENERAL:
 						if (ASInterface == 0)
 							ASInterface = new ASInterfaceDescriptor(
-								//(usb_as_interface_descriptor_r1*) Header);
-								(usb_as_interface_descriptor*) Header);
+								(usb_audio_streaming_interface_descriptor*)Header);
 						else
 							TRACE_ALWAYS("Duplicate AStream interface ignored.\n");
 						break;
 					case USB_AUDIO_AS_FORMAT_TYPE:
 						if (ASFormat == 0)
 							ASFormat = new TypeIFormatDescriptor(
-								//(usb_type_I_format_descriptor*) Header);
-								(usb_format_descriptor*) Header);
+								(usb_audio_format_descriptor*) Header);
 						else
 							TRACE_ALWAYS("Duplicate AStream format ignored.\n");
 						break;
@@ -469,7 +450,7 @@ AudioStreamingInterface::AudioStreamingInterface(
 					usb_endpoint_descriptor* Endpoint
 						= Interface->endpoint[0].descr;
 					ASEndpoint = new ASEndpointDescriptor(Endpoint,
-						(usb_as_cs_endpoint_descriptor*)Header);
+						(usb_audio_streaming_endpoint_descriptor*)Header);
 				} else
 					TRACE_ALWAYS("Duplicate AStream endpoint ignored.\n");
 				continue;
