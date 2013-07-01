@@ -336,7 +336,7 @@ Device::_MultiGetDescription(multi_description* multiDescription)
 		return B_BAD_ADDRESS;
 
 	if (user_memcpy(multiDescription->channels,
-			&Channels[0], min_c(Channels.Count(),
+			&Channels[0], sizeof(multi_channel_info) * min_c(Channels.Count(),
 			Description.request_channel_count)) != B_OK)
 		return B_BAD_ADDRESS;
 
@@ -487,6 +487,18 @@ Device::_MultiGetBuffers(multi_buffer_list* List)
 		List->return_record_buffers,
 		List->return_record_channels,
 		List->return_record_buffer_size);
+
+	TRACE(API, "playback buffers\n");
+	for (int32_t b = 0; b <  List->return_playback_buffers; b++)
+		for (int32 c = 0; c < List->return_playback_channels; c++)
+			TRACE(API, "%d:%d %08x:%d\n", b, c, List->playback_buffers[b][c].base,
+				List->playback_buffers[b][c].stride);
+
+	TRACE(API, "record buffers:\n");
+	for (int32_t b = 0; b <  List->return_record_buffers; b++)
+		for (int32 c = 0; c < List->return_record_channels; c++)
+			TRACE(API, "%d:%d %08x:%d\n", b, c, List->record_buffers[b][c].base,
+				List->record_buffers[b][c].stride);
 
 	return B_OK;
 }

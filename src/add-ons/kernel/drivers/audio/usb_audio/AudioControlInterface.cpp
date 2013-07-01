@@ -1068,7 +1068,7 @@ AudioControlInterface::GetBusChannelsDescription(
 		addedChannels += channels;
 	}
 
-	// output channels should follow too
+	// input channels should follow too
 	for (AudioControlsIterator I = fInputTerminals.Begin();
 			I != fInputTerminals.End(); I++) {
 		_AudioControl* control = I->Value();
@@ -1083,7 +1083,7 @@ AudioControlInterface::GetBusChannelsDescription(
 		}
 
 		uint32 channels = GetTerminalChannels(Channels,
-											cluster, B_MULTI_INPUT_BUS);
+			cluster, B_MULTI_INPUT_BUS);
 
 		Description->input_bus_channel_count += channels;
 		addedChannels += channels;
