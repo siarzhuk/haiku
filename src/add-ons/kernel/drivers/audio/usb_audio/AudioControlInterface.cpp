@@ -1104,7 +1104,7 @@ AudioControlInterface::_HarvestRecordFeatureUnits(_AudioControl* rootControl,
 
 	switch(rootControl->SubType()) {
 		case USB_AUDIO_AC_OUTPUT_TERMINAL:
-			// _HarvestRecordFeatureUnits(Find(rootControl->SourceID()), Map);
+			_HarvestRecordFeatureUnits(Find(rootControl->SourceID()), Map);
 			break;
 
 		case USB_AUDIO_AC_SELECTOR_UNIT:
@@ -1518,10 +1518,10 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 					Info->values[i].enable);
 				break;
 			case 0: // Selector Unit
-				Info->values[i].mux = data;
+				Info->values[i].mux = data - 1;
 				TRACE(MIX, "Selector control %d; is %d.\n",
 					ID_FROM_CTLID(Info->values[i].id),
-					Info->values[i].mux);
+					Info->values[i].mux + 1);
 				break;
 			default:
 				break;
@@ -1565,11 +1565,11 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 					Info->values[i].enable);
 				break;
 			case 0: // Selector Unit
-				data = Info->values[i].mux;
+				data = Info->values[i].mux + 1;
 				length = 1;
 				TRACE(MIX, "Selector Control %d about to set to %d.\n",
 					ID_FROM_CTLID(Info->values[i].id),
-					Info->values[i].mux);
+					Info->values[i].mux + 1);
 				break;
 			default:
 				TRACE(ERR, "Unsupported control type %#02x ignored.\n",
