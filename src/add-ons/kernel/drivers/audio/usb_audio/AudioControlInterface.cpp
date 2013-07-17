@@ -1475,19 +1475,40 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 	for (int32 i = 0; i < Info->item_count; i++) {
 		uint16 length = 0;
 		int16 data = 0;
-		switch(CS_FROM_CTLID(Info->values[i].id)) {
-			case USB_AUDIO_VOLUME_CONTROL:
-				length = 2;
+
+		_AudioControl* control = Find(ID_FROM_CTLID(Info->values[i].id));
+		if (control == NULL) {
+			TRACE(ERR, "No control found for unit id %#02x. Ignore it.\n",
+				ID_FROM_CTLID(Info->values[i].id));
+			continue;
+		}
+		
+		switch (control->SubType()) {
+			case USB_AUDIO_AC_FEATURE_UNIT:
+				switch(CS_FROM_CTLID(Info->values[i].id)) {
+					case USB_AUDIO_VOLUME_CONTROL:
+						length = 2;
+						break;
+					//case 0: // Selector Unit
+					case USB_AUDIO_MUTE_CONTROL:
+					case USB_AUDIO_AUTOMATIC_GAIN_CONTROL:
+						length = 1;
+						break;
+					default:
+						TRACE(ERR, "Unsupported control type %#02x ignored.\n",
+							CS_FROM_CTLID(Info->values[i].id));
+						continue;
+				}
 				break;
-			case 0: // Selector Unit
-			case USB_AUDIO_MUTE_CONTROL:
-			case USB_AUDIO_AUTOMATIC_GAIN_CONTROL:
+			case USB_AUDIO_AC_SELECTOR_UNIT:
 				length = 1;
 				break;
+			case USB_AUDIO_AC_MIXER_UNIT:
+				length = 2; // TODO ?
+				break;
 			default:
-				TRACE(ERR, "Unsupported control type %#02x ignored.\n",
-					CS_FROM_CTLID(Info->values[i].id));
-				continue;
+				// TODO
+				break;
 		}
 
 		size_t actualLength = 0;
@@ -1502,35 +1523,48 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 			continue;
 		}
 
-		switch(CS_FROM_CTLID(Info->values[i].id)) {
-			case USB_AUDIO_VOLUME_CONTROL:
-				Info->values[i].gain = static_cast<float>(data) / 256.;
-				TRACE(MIX, "Gain control %d; channel: %d; is %f dB.\n",
-					ID_FROM_CTLID(Info->values[i].id),
-					CN_FROM_CTLID(Info->values[i].id),
-					Info->values[i].gain);
+		switch (control->SubType()) {
+			case USB_AUDIO_AC_FEATURE_UNIT:
+				switch(CS_FROM_CTLID(Info->values[i].id)) {
+					case USB_AUDIO_VOLUME_CONTROL:
+						Info->values[i].gain = static_cast<float>(data) / 256.;
+						TRACE(MIX, "Gain control %d; channel: %d; is %f dB.\n",
+							ID_FROM_CTLID(Info->values[i].id),
+							CN_FROM_CTLID(Info->values[i].id),
+							Info->values[i].gain);
+						break;
+					case USB_AUDIO_MUTE_CONTROL:
+						Info->values[i].enable = data > 0;
+						TRACE(MIX, "Mute control %d; channel: %d; is %d.\n",
+							ID_FROM_CTLID(Info->values[i].id),
+							CN_FROM_CTLID(Info->values[i].id),
+							Info->values[i].enable);
+						break;
+					case USB_AUDIO_AUTOMATIC_GAIN_CONTROL:
+						Info->values[i].enable = data > 0;
+						TRACE(MIX, "AGain control %d; channel: %d; is %d.\n",
+							ID_FROM_CTLID(Info->values[i].id),
+							CN_FROM_CTLID(Info->values[i].id),
+							Info->values[i].enable);
+						break;
+				/*	case 0: // Selector Unit
+						Info->values[i].mux = data - 1;
+						TRACE(MIX, "Selector control %d; is %d.\n",
+							ID_FROM_CTLID(Info->values[i].id),
+							Info->values[i].mux);
+						break; */
+					default:
+						break;
+				}
 				break;
-			case USB_AUDIO_MUTE_CONTROL:
-				Info->values[i].enable = data > 0;
-				TRACE(MIX, "Mute control %d; channel: %d; is %d.\n",
-					ID_FROM_CTLID(Info->values[i].id),
-					CN_FROM_CTLID(Info->values[i].id),
-					Info->values[i].enable);
-				break;
-			case USB_AUDIO_AUTOMATIC_GAIN_CONTROL:
-				Info->values[i].enable = data > 0;
-				TRACE(MIX, "AGain control %d; channel: %d; is %d.\n",
-					ID_FROM_CTLID(Info->values[i].id),
-					CN_FROM_CTLID(Info->values[i].id),
-					Info->values[i].enable);
-				break;
-			case 0: // Selector Unit
+			case USB_AUDIO_AC_SELECTOR_UNIT:
 				Info->values[i].mux = data - 1;
 				TRACE(MIX, "Selector control %d; is %d.\n",
 					ID_FROM_CTLID(Info->values[i].id),
 					Info->values[i].mux);
 				break;
-			default:
+			case USB_AUDIO_AC_MIXER_UNIT:
+				// TODO
 				break;
 		}
 	}
@@ -1546,42 +1580,69 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 		uint16 length = 0;
 		int16 data = 0;
 
-		switch(CS_FROM_CTLID(Info->values[i].id)) {
-			case USB_AUDIO_VOLUME_CONTROL:
-				data = static_cast<int16>(Info->values[i].gain * 256.);
-				length = 2;
-				TRACE(MIX, "Gain control %d; channel: %d; about to set to %f dB.\n",
-					ID_FROM_CTLID(Info->values[i].id),
-					CN_FROM_CTLID(Info->values[i].id),
-					Info->values[i].gain);
+		_AudioControl* control = Find(ID_FROM_CTLID(Info->values[i].id));
+		if (control == NULL) {
+			TRACE(ERR, "No control found for unit id %#02x. Ignore it.\n",
+				ID_FROM_CTLID(Info->values[i].id));
+			continue;
+		}
+		
+		switch (control->SubType()) {
+			case USB_AUDIO_AC_FEATURE_UNIT:
+				switch(CS_FROM_CTLID(Info->values[i].id)) {
+					case USB_AUDIO_VOLUME_CONTROL:
+						data = static_cast<int16>(Info->values[i].gain * 256.);
+						length = 2;
+						TRACE(MIX, "Gain control %d; channel: %d; "
+							"about to set to %f dB.\n",
+							ID_FROM_CTLID(Info->values[i].id),
+							CN_FROM_CTLID(Info->values[i].id),
+							Info->values[i].gain);
+						break;
+					case USB_AUDIO_MUTE_CONTROL:
+						data = (Info->values[i].enable ? 1 : 0);
+						length = 1;
+						TRACE(MIX, "Mute control %d; channel: %d; "
+							"about to set to %d.\n",
+							ID_FROM_CTLID(Info->values[i].id),
+							CN_FROM_CTLID(Info->values[i].id),
+							Info->values[i].enable);
+						break;
+					case USB_AUDIO_AUTOMATIC_GAIN_CONTROL:
+						data = (Info->values[i].enable ? 1 : 0);
+						length = 1;
+						TRACE(MIX, "AGain control %d; channel: %d; "
+							"about to set to %d.\n",
+							ID_FROM_CTLID(Info->values[i].id),
+							CN_FROM_CTLID(Info->values[i].id),
+							Info->values[i].enable);
+						break;
+					/*case 0: // Selector Unit
+						data = Info->values[i].mux + 1;
+						length = 1;
+						TRACE(MIX, "Selector Control %d about to set to %d.\n",
+							ID_FROM_CTLID(Info->values[i].id),
+							Info->values[i].mux);
+						break;*/
+					default:
+						TRACE(ERR, "Unsupported control type %#02x ignored.\n",
+							CS_FROM_CTLID(Info->values[i].id));
+						continue;
+				}
 				break;
-			case USB_AUDIO_MUTE_CONTROL:
-				data = (Info->values[i].enable ? 1 : 0);
-				length = 1;
-				TRACE(MIX, "Mute control %d; channel: %d; about to set to %d.\n",
-					ID_FROM_CTLID(Info->values[i].id),
-					CN_FROM_CTLID(Info->values[i].id),
-					Info->values[i].enable);
-				break;
-			case USB_AUDIO_AUTOMATIC_GAIN_CONTROL:
-				data = (Info->values[i].enable ? 1 : 0);
-				length = 1;
-				TRACE(MIX, "AGain control %d; channel: %d; about to set to %d.\n",
-					ID_FROM_CTLID(Info->values[i].id),
-					CN_FROM_CTLID(Info->values[i].id),
-					Info->values[i].enable);
-				break;
-			case 0: // Selector Unit
+			case USB_AUDIO_AC_SELECTOR_UNIT:
 				data = Info->values[i].mux + 1;
 				length = 1;
 				TRACE(MIX, "Selector Control %d about to set to %d.\n",
 					ID_FROM_CTLID(Info->values[i].id),
 					Info->values[i].mux);
 				break;
+			case USB_AUDIO_AC_MIXER_UNIT:
+				// TODO
+				break;
 			default:
-				TRACE(ERR, "Unsupported control type %#02x ignored.\n",
-					CS_FROM_CTLID(Info->values[i].id));
-				continue;
+				// TODO
+				break;
 		}
 
 		size_t actualLength = 0;
