@@ -473,7 +473,7 @@ FeatureUnit::Name()
 {
 	// first check if source of this FU is an input terminal
 	_AudioControl* control = fInterface->Find(fSourceID);
-	while (control != 0) {
+	while (control != NULL) {
 		if (control->SubType() != USB_AUDIO_AC_INPUT_TERMINAL)
 			break;
 
@@ -487,7 +487,7 @@ FeatureUnit::Name()
 
 	// check if output of this FU is connected to output terminal
 	control = fInterface->FindOutputTerminal(fID);
-	while (control != 0) {
+	while (control != NULL) {
 		if (control->SubType() != USB_AUDIO_AC_OUTPUT_TERMINAL)
 			break;
 
@@ -499,6 +499,13 @@ FeatureUnit::Name()
 		return control->Name();
 	}
 
+	// otherwise get the generic name of this FU's source
+	control = fInterface->Find(fSourceID);
+	if (control != NULL && control->Name() != NULL
+			&& strlen(control->Name()) > 0)
+		return control->Name();
+
+	// I have no more ideas, have you one?
 	return "Unknown";
 }
 
@@ -1521,7 +1528,7 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 				Info->values[i].mux = data - 1;
 				TRACE(MIX, "Selector control %d; is %d.\n",
 					ID_FROM_CTLID(Info->values[i].id),
-					Info->values[i].mux + 1);
+					Info->values[i].mux);
 				break;
 			default:
 				break;
@@ -1569,7 +1576,7 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 				length = 1;
 				TRACE(MIX, "Selector Control %d about to set to %d.\n",
 					ID_FROM_CTLID(Info->values[i].id),
-					Info->values[i].mux + 1);
+					Info->values[i].mux);
 				break;
 			default:
 				TRACE(ERR, "Unsupported control type %#02x ignored.\n",
