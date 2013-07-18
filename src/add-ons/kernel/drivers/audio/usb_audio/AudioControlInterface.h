@@ -126,7 +126,7 @@ public:
 	virtual	const char*		Name() { return "Mixer"; }
 			bool			HasProgrammableControls();
 
-protected:
+//protected:
 			Vector<uint8>	fInputPins;
 			Vector<uint8>	fControlsBitmap;
 			uint8			fBmControlsR2;
