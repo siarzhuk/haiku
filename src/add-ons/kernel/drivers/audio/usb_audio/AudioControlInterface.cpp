@@ -290,7 +290,7 @@ MixerUnit::MixerUnit(AudioControlInterface*	interface,
 		usb_audiocontrol_header_descriptor* Header)
 	:
 	_AudioChannelCluster<_AudioControl>(interface, Header),
-	fControlsBitmap(0)
+	fBmControlsR2(0)
 {
 	usb_audio_mixer_unit_descriptor* Mixer
 		= (usb_audio_mixer_unit_descriptor*) Header;
@@ -330,10 +330,10 @@ MixerUnit::MixerUnit(AudioControlInterface*	interface,
 
 		mixerControlsData = (uint8*) ++OutChannels;
 		mixerControlsSize = Mixer->length - 13 - Mixer->num_input_pins;
-		fControlsBitmap = *(mixerControlsData + mixerControlsSize);
+		fBmControlsR2 = *(mixerControlsData + mixerControlsSize);
 		fStringIndex = *(mixerControlsData + mixerControlsSize + 1);
 
-		TRACE(UAC, "Control Bitmap:%#04x\n", fControlsBitmap);
+		TRACE(UAC, "Control Bitmap:%#04x\n", fBmControlsR2);
 	}
 
 	TRACE(UAC, "Out channels number:%d\n",		fOutChannelsNumber);
@@ -342,8 +342,8 @@ MixerUnit::MixerUnit(AudioControlInterface*	interface,
 	TRACE(UAC, "Controls Size:%d\n", mixerControlsSize);
 
 	for (size_t i = 0; i < mixerControlsSize; i++) {
-		fProgrammableControls.PushBack(mixerControlsData[i]);
-		TRACE(UAC, "Controls Data[%d]:%#x\n", i, fProgrammableControls[i]);
+		fControlsBitmap.PushBack(mixerControlsData[i]);
+		TRACE(UAC, "Controls Data[%d]:%#x\n", i, fControlsBitmap[i]);
 	}
 
 	TRACE(UAC, "StringIndex:%d\n", fStringIndex);
@@ -354,6 +354,16 @@ MixerUnit::MixerUnit(AudioControlInterface*	interface,
 
 MixerUnit::~MixerUnit()
 {
+}
+
+
+bool
+MixerUnit::HasProgrammableControls()
+{
+	for (size_t i = 0; i < fControlsBitmap.Count(); i++)
+		if (fControlsBitmap[i] != 0)
+			return true;
+	return false;
 }
 
 
@@ -400,12 +410,13 @@ SelectorUnit::OutCluster()
 {
 	if (fInterface == NULL)
 		return NULL;
-
+	
 	for (int i = 0; i < fInputPins.Count(); i++) {
 		_AudioControl* control = fInterface->Find(fInputPins[i]);
 		if (control == NULL)
 			continue;
-
+		// selector has the same channels number in the
+		// out cluster as anyone of his inputs
 		if (control->OutCluster() != NULL)
 			return control->OutCluster();
 	}
@@ -1393,6 +1404,44 @@ AudioControlInterface::_ListSelectorUnitControl(int32& index, int32 parentGroup,
 
 
 void
+AudioControlInterface::_ListMixerUnitControl(int32& index, int32 parentGroup,
+		multi_mix_control_info* Info, _AudioControl* control)
+{
+#if 0	
+	SelectorUnit* selector = static_cast<SelectorUnit*>(control);
+	if (selector == 0 || selector->SubType() != USB_AUDIO_AC_SELECTOR_UNIT)
+		return;
+
+	multi_mix_control* Controls = Info->controls;
+
+	int32 recordMUX = CTL_ID(0, 0, selector->ID(), fInterface);
+	Controls[index].id	= recordMUX;
+	Controls[index].flags = B_MULTI_MIX_MUX;
+	Controls[index].parent = parentGroup;
+	Controls[index].string = S_null;
+	strlcpy(Controls[index].name, "Source", sizeof(Controls[index].name));
+	index++;
+
+	for (int i = 0; i < selector->fInputPins.Count(); i++) {
+		Controls[index].id = CTL_ID(0, 1, selector->ID(), fInterface);
+		Controls[index].flags = B_MULTI_MIX_MUX_VALUE;
+		Controls[index].master = 0;
+		Controls[index].string = S_null;
+		Controls[index].parent = recordMUX;
+		_AudioControl* control = Find(selector->fInputPins[i]);
+		if (control != NULL)
+			strlcpy(Controls[index].name,
+				control->Name(), sizeof(Controls[index].name));
+		else
+			snprintf(Controls[index].name,
+				sizeof(Controls[index].name), "Input #%d", i + 1);
+		index++;
+	}
+#endif
+}
+
+
+void
 AudioControlInterface::_ListMixControlsPage(int32& index,
 		multi_mix_control_info* Info, AudioControlsMap& Map, const char* Name)
 {
@@ -1415,6 +1464,9 @@ AudioControlInterface::_ListMixControlsPage(int32& index,
 			case USB_AUDIO_AC_SELECTOR_UNIT:
 				_ListSelectorUnitControl(index, group, Info, I->Value());
 				break;
+			case USB_AUDIO_AC_MIXER_UNIT:
+				_ListMixerUnitControl(index, group, Info, I->Value());
+				break;
 		}
 	}
 }
@@ -1433,12 +1485,23 @@ AudioControlInterface::ListMixControls(multi_mix_control_info* Info)
 			_HarvestRecordFeatureUnits(terminal, RecordControlsMap);
 	}
 
+	// separate input and output Feature units
+	// and collect mixer units that can be controlled 
 	AudioControlsMap InputControlsMap;
 	AudioControlsMap OutputControlsMap;
+	AudioControlsMap MixerControlsMap;
 
 	for (AudioControlsIterator I = fAudioControls.Begin();
 			I != fAudioControls.End(); I++) {
 		_AudioControl* control = I->Value();
+
+		if (control->SubType() == USB_AUDIO_AC_MIXER_UNIT) {
+			MixerUnit* mixerControl = static_cast<MixerUnit*>(control);
+			if (mixerControl->HasProgrammableControls())
+				MixerControlsMap.Put(control->ID(), control);
+			continue;
+		}
+
 		// filter out feature units
 		if (control->SubType() != USB_AUDIO_AC_FEATURE_UNIT)
 			continue;
@@ -1464,6 +1527,9 @@ AudioControlInterface::ListMixControls(multi_mix_control_info* Info)
 
 	if (RecordControlsMap.Count() > 0)
 		_ListMixControlsPage(index, Info, RecordControlsMap, "Record");
+
+	if (MixerControlsMap.Count() > 0)
+		_ListMixControlsPage(index, Info, MixerControlsMap, "Mixer");
 
 	return B_OK;
 }

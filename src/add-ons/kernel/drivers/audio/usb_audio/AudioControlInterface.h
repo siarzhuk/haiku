@@ -124,11 +124,12 @@ public:
 	virtual					~MixerUnit();
 	
 	virtual	const char*		Name() { return "Mixer"; }
+			bool			HasProgrammableControls();
 
 protected:
 			Vector<uint8>	fInputPins;
-			Vector<uint8>	fProgrammableControls;
-			uint8			fControlsBitmap;
+			Vector<uint8>	fControlsBitmap;
+			uint8			fBmControlsR2;
 };
 
 
@@ -300,6 +301,9 @@ protected:
 								multi_mix_control_info* Info, FeatureUnit* unit,
 								uint32 channel, uint32 channels);
 			void			_ListSelectorUnitControl(int32& index,
+								int32 parentGroup, multi_mix_control_info* Info,
+								_AudioControl* control);
+			void			_ListMixerUnitControl(int32& index,
 								int32 parentGroup, multi_mix_control_info* Info,
 								_AudioControl* control);
 			void			_InitGainLimits(multi_mix_control& Control);
