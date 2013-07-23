@@ -78,6 +78,13 @@ AudioChannelCluster::~AudioChannelCluster()
 }
 
 
+bool
+AudioChannelCluster::HasChannel(uint32 location)
+{
+	return (fChannelsConfig & location) == location;
+}
+
+
 _Terminal::_Terminal(AudioControlInterface*	interface,
 	usb_audiocontrol_header_descriptor* Header)
 	:
@@ -1181,6 +1188,49 @@ AudioControlInterface::_InitGainLimits(multi_mix_control& Control)
 }
 
 
+void
+AudioControlInterface::_InitMixLimits(multi_mix_control& Control)
+{
+	float cur = 0.;
+	struct _GainInfo {
+		uint8	request;
+		int16	data;
+		float&	value;
+	} gainInfos[] = {
+		{ USB_AUDIO_GET_CUR, 0, cur },
+		{ USB_AUDIO_GET_MIN, 0, Control.gain.min_gain },
+		{ USB_AUDIO_GET_MAX, 0, Control.gain.max_gain },
+//		{ USB_AUDIO_GET_RES, 0, Control.gain.granularity }
+	};
+
+	Control.gain.min_gain = 0.;
+	Control.gain.max_gain = 100.;
+	Control.gain.granularity = 1.;
+
+	size_t actualLength = 0;
+	for (size_t i = 0; i < _countof(gainInfos); i++) {
+		status_t status = gUSBModule->send_request(fDevice->USBDevice(),
+			USB_REQTYPE_INTERFACE_IN | USB_REQTYPE_CLASS,
+			gainInfos[i].request, REQ_VALUE(Control.id),
+			REQ_INDEX(Control.id), sizeof(gainInfos[i].data),
+			&gainInfos[i].data, &actualLength);
+
+		if (status != B_OK || actualLength != sizeof(gainInfos[i].data)) {
+			TRACE(ERR, "Request %d (%04x:%04x) fail:%#08x; received %d of %d\n",
+				i, REQ_VALUE(Control.id), REQ_INDEX(Control.id), status,
+				actualLength, sizeof(gainInfos[i].data));
+			continue;
+		}
+
+		gainInfos[i].value = static_cast<float>(gainInfos[i].data) / 256.;
+	}
+
+	TRACE(ERR, "Control %s: from %f to %f dB, step %f dB cur %f.\n",
+		Control.name, Control.gain.min_gain, Control.gain.max_gain,
+		Control.gain.granularity, cur);
+}
+
+
 uint32
 AudioControlInterface::_ListFeatureUnitOption(uint32 controlType,
 		int32& index, int32 parentIndex, multi_mix_control_info* Info,
@@ -1403,7 +1453,7 @@ AudioControlInterface::_ListSelectorUnitControl(int32& index, int32 parentGroup,
 	}
 }
 
-
+/*
 void
 AudioControlInterface::_ListMixerUnitControl(int32& index, int32 parentGroup,
 		multi_mix_control_info* Info, _AudioControl* control)
@@ -1434,8 +1484,9 @@ AudioControlInterface::_ListMixerUnitControl(int32& index, int32 parentGroup,
 				Control.flags = 0;
 				Control.parent = 0;
 				Control.string = S_null;
-				sprintf(Control.name, "mix:%d,%d,%d", iPin, in, out);
-				_InitGainLimits(Control);
+				//sprintf(Control.name, "mix:%d,%d,%d", iPin, in, out);
+				strlcpy(Control.name, control->Name(), sizeof(Control.name));
+				_InitMixLimits(Control);
 			}
 		}
 	}
@@ -1466,6 +1517,55 @@ AudioControlInterface::_ListMixerUnitControl(int32& index, int32 parentGroup,
 	}
 #endif
 }
+*/
+
+
+void
+AudioControlInterface::	_ListMixerUnitControls(int32& index,
+		multi_mix_control_info* Info, _AudioControl* control)
+{
+	MixerUnit* mixer = static_cast<MixerUnit*>(control);
+	if (mixer == 0 || mixer->SubType() != USB_AUDIO_AC_MIXER_UNIT)
+		return;
+
+	struct _MixerControl {
+		uint32 controlId;
+		const char controlName[sizeof(Controls[0].name)];
+	};
+
+//	multi_mix_control* Controls = Info->controls;
+	AudioChannelCluster* outCluster = mixer->OutCluster();
+
+	int inChannel = 0;
+	for (int iPin = 0; iPin < mixer->fInputPins.Count(); iPin++) {
+		_AudioControl* control = Find(mixer->fInputPins[iPin]);
+		AudioChannelCluster* inCluster = NULL;
+		if (control != NULL)
+			inCluster = control->OutCluster();
+		if (inCluster == NULL) {
+			TRACE(ERR, "control %p cluster %p failed!\n", control, inCluster);
+			break;
+		}
+
+		uint32 exChannelsMask = ~(B_CHANNEL_LEFT | B_CHANNEL_RIGHT);
+		if ((inCluster->ChannelsConfig() & exChannelsMask) != 0
+			&& (outCluster->ChannelsConfig() & exChannelsMask) != 0)
+
+		for (int in = 0; in < inCluster->ChannelsCount(); in++, inChannel++) {
+			for (int out = 0; out < outCluster->ChannelsCount(); out++) {
+			/*	multi_mix_control Control = { 0 };
+				uint32 index = CTL_ID(inChannel + 1, out + 1, mixer->ID(), fInterface);
+				Control.id  = index;
+				Control.flags = 0;
+				Control.parent = 0;
+				Control.string = S_null;
+				//sprintf(Control.name, "mix:%d,%d,%d", iPin, in, out);
+				strlcpy(Control.name, control->Name(), sizeof(Control.name));
+				_InitMixLimits(Control); */
+			}
+		}
+	}
+}
 
 
 void
@@ -1491,9 +1591,9 @@ AudioControlInterface::_ListMixControlsPage(int32& index,
 			case USB_AUDIO_AC_SELECTOR_UNIT:
 				_ListSelectorUnitControl(index, group, Info, I->Value());
 				break;
-			case USB_AUDIO_AC_MIXER_UNIT:
+/*			case USB_AUDIO_AC_MIXER_UNIT:
 				_ListMixerUnitControl(index, group, Info, I->Value());
-				break;
+				break;*/
 		}
 	}
 }
@@ -1555,8 +1655,14 @@ AudioControlInterface::ListMixControls(multi_mix_control_info* Info)
 	if (RecordControlsMap.Count() > 0)
 		_ListMixControlsPage(index, Info, RecordControlsMap, "Record");
 
-	if (MixerControlsMap.Count() > 0)
-		_ListMixControlsPage(index, Info, MixerControlsMap, "Mixer");
+
+	for (AudioControlsIterator I = MixerControlsMap.Begin();
+			I != MixerControlsMap.End(); I++) {
+	//	if (MixerControlsMap.Count() > 0)
+	//	_ListMixControlsPage(index, Info, MixerControlsMap, "Mixer");
+		_ListMixerUnitControls(index, Info, I->Value());
+		
+	}
 
 	return B_OK;
 }

@@ -29,6 +29,8 @@ public:
 
 			uint8			ChannelsCount()		{ return fOutChannelsNumber; }
 			uint32			ChannelsConfig()	{ return fChannelsConfig;	 }
+			
+			bool			HasChannel(uint32 location);
 
 protected:
 			uint8			fOutChannelsNumber;
@@ -303,10 +305,14 @@ protected:
 			void			_ListSelectorUnitControl(int32& index,
 								int32 parentGroup, multi_mix_control_info* Info,
 								_AudioControl* control);
-			void			_ListMixerUnitControl(int32& index,
-								int32 parentGroup, multi_mix_control_info* Info,
+//			void			_ListMixerUnitControl(int32& index,
+//								int32 parentGroup, multi_mix_control_info* Info,
+//								_AudioControl* control);
+			void			_ListMixerUnitControls(int32& index,
+								multi_mix_control_info* Info,
 								_AudioControl* control);
 			void			_InitGainLimits(multi_mix_control& Control);
+			void			_InitMixLimits(multi_mix_control& Control);
 
 			size_t			fInterface;
 			status_t		fStatus;
