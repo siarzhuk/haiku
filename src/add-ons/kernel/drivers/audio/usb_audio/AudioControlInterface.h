@@ -127,6 +127,7 @@ public:
 	
 	virtual	const char*		Name() { return "Mixer"; }
 			bool			HasProgrammableControls();
+			bool			IsControlProgrammable(int inChannel, int outChannel);
 
 //protected:
 			Vector<uint8>	fInputPins;

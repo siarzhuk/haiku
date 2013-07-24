@@ -32,6 +32,33 @@
 #define REQ_INDEX(_ID) (0xffff & (_ID))
 
 
+const size_t kDesignations = 18;
+
+struct _Designation {
+	uint32 ch;
+	uint32 bus;
+} gDesignations[kDesignations] = {
+	{ B_CHANNEL_LEFT,				B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_RIGHT,				B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_CENTER,				B_CHANNEL_SURROUND_BUS	},
+	{ B_CHANNEL_SUB,				B_CHANNEL_SURROUND_BUS	},
+	{ B_CHANNEL_REARLEFT,			B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_REARRIGHT,			B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_FRONT_LEFT_CENTER,	B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_FRONT_RIGHT_CENTER,	B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_BACK_CENTER,		B_CHANNEL_SURROUND_BUS	},
+	{ B_CHANNEL_SIDE_LEFT,			B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_SIDE_RIGHT,			B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_TOP_CENTER,			B_CHANNEL_SURROUND_BUS	},
+	{ B_CHANNEL_TOP_FRONT_LEFT,		B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_TOP_FRONT_CENTER,	B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_TOP_FRONT_RIGHT,	B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_TOP_BACK_LEFT,		B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_TOP_BACK_CENTER,	B_CHANNEL_SURROUND_BUS	},
+	{ B_CHANNEL_TOP_BACK_RIGHT,		B_CHANNEL_STEREO_BUS	}
+};
+
+
 _AudioControl::_AudioControl(AudioControlInterface*	interface,
 		usb_audiocontrol_header_descriptor* Header)
 	:
@@ -370,6 +397,14 @@ MixerUnit::HasProgrammableControls()
 	for (int i = 0; i < fControlsBitmap.Count(); i++)
 		if (fControlsBitmap[i] != 0)
 			return true;
+	return false;
+}
+
+
+bool
+MixerUnit::IsControlProgrammable(int inChannel, int outChannel)
+{
+	// TODO
 	return false;
 }
 
@@ -1021,41 +1056,15 @@ AudioControlInterface::GetTerminalChannels(Vector<multi_channel_info>& Channels,
 
 	uint32 startCount = Channels.Count();
 
-	const uint32 locations = 18;
-
-	struct _Designation {
-		uint32 ch;
-		uint32 bus;
-	} Designations[locations] = {
-		{ B_CHANNEL_LEFT,				B_CHANNEL_STEREO_BUS	},
-		{ B_CHANNEL_RIGHT,				B_CHANNEL_STEREO_BUS	},
-		{ B_CHANNEL_CENTER,				B_CHANNEL_SURROUND_BUS	},
-		{ B_CHANNEL_SUB,				B_CHANNEL_SURROUND_BUS	},
-		{ B_CHANNEL_REARLEFT,			B_CHANNEL_STEREO_BUS	},
-		{ B_CHANNEL_REARRIGHT,			B_CHANNEL_STEREO_BUS	},
-		{ B_CHANNEL_FRONT_LEFT_CENTER,	B_CHANNEL_STEREO_BUS	},
-		{ B_CHANNEL_FRONT_RIGHT_CENTER,	B_CHANNEL_STEREO_BUS	},
-		{ B_CHANNEL_BACK_CENTER,		B_CHANNEL_SURROUND_BUS	},
-		{ B_CHANNEL_SIDE_LEFT,			B_CHANNEL_STEREO_BUS	},
-		{ B_CHANNEL_SIDE_RIGHT,			B_CHANNEL_STEREO_BUS	},
-		{ B_CHANNEL_TOP_CENTER,			B_CHANNEL_SURROUND_BUS	},
-		{ B_CHANNEL_TOP_FRONT_LEFT,		B_CHANNEL_STEREO_BUS	},
-		{ B_CHANNEL_TOP_FRONT_CENTER,	B_CHANNEL_STEREO_BUS	},
-		{ B_CHANNEL_TOP_FRONT_RIGHT,	B_CHANNEL_STEREO_BUS	},
-		{ B_CHANNEL_TOP_BACK_LEFT,		B_CHANNEL_STEREO_BUS	},
-		{ B_CHANNEL_TOP_BACK_CENTER,	B_CHANNEL_SURROUND_BUS	},
-		{ B_CHANNEL_TOP_BACK_RIGHT,		B_CHANNEL_STEREO_BUS	}
-	};
-
 	// Haiku multi-aduio designations have the same bits
 	// as USB Audio 2.0 cluster spatial locations :-)
-	for (size_t i = 0; i < locations; i++) {
+	for (size_t i = 0; i < kDesignations; i++) {
 		uint32 designation = 1 << i;
 		if ((cluster->ChannelsConfig() & designation) == designation) {
 			multi_channel_info info;
 			info.channel_id	= Channels.Count();
 			info.kind		= kind;
-			info.designations= Designations[i].ch | Designations[i].bus;
+			info.designations= gDesignations[i].ch | gDesignations[i].bus;
 			info.connectors	= connectors;
 			Channels.PushBack(info);
 		}
@@ -1528,15 +1537,18 @@ AudioControlInterface::	_ListMixerUnitControls(int32& index,
 	if (mixer == 0 || mixer->SubType() != USB_AUDIO_AC_MIXER_UNIT)
 		return;
 
+/*	multi_mix_control* Controls = Info->controls;
 	struct _MixerControl {
-		uint32 controlId;
-		const char controlName[sizeof(Controls[0].name)];
-	};
+		uint32 index;
+		uint32 flags;
+		const char name[sizeof(Controls[0].name)];
+		multi_mix_control Control;
+	};*/
 
-//	multi_mix_control* Controls = Info->controls;
 	AudioChannelCluster* outCluster = mixer->OutCluster();
 
 	int inChannel = 0;
+	int outChannel = 0;
 	for (int iPin = 0; iPin < mixer->fInputPins.Count(); iPin++) {
 		_AudioControl* control = Find(mixer->fInputPins[iPin]);
 		AudioChannelCluster* inCluster = NULL;
@@ -1548,12 +1560,44 @@ AudioControlInterface::	_ListMixerUnitControls(int32& index,
 		}
 
 		uint32 exChannelsMask = ~(B_CHANNEL_LEFT | B_CHANNEL_RIGHT);
-		if ((inCluster->ChannelsConfig() & exChannelsMask) != 0
-			&& (outCluster->ChannelsConfig() & exChannelsMask) != 0)
+		bool inIsEx = (inCluster->ChannelsConfig() & exChannelsMask) != 0;
+		bool outIsEx = (outCluster->ChannelsConfig() & exChannelsMask) != 0;
 
+		for (size_t i = 0; i < kDesignations; i++) {
+			if ((inCluster->ChannelsConfig() & (1 << i)) == 0)
+				continue;
+			inChannel++;
+			
+			for (size_t o = 0; o < kDesignations; o++) {
+				if ((outCluster->ChannelsConfig() & (1 << o)) == 0)
+					continue;
+				outChannel++;
+
+				if (!mixer->IsControlProgrammable(inChannel, outChannel))
+					continue;
+
+				if (!inIsEx && !outIsEx) {
+					// TODO: collect for generic Mixer pane
+					continue;
+				}
+				
+				if (!inIsEx && outIsEx) {
+					// TODO: collect
+					continue; 
+				}
+				
+				if (inIsEx && !outIsEx) {
+					// TODO: collect
+					continue; 
+				}
+
+				// TODO
+			}
+		}
+		/*
 		for (int in = 0; in < inCluster->ChannelsCount(); in++, inChannel++) {
 			for (int out = 0; out < outCluster->ChannelsCount(); out++) {
-			/*	multi_mix_control Control = { 0 };
+			/ *	multi_mix_control Control = { 0 };
 				uint32 index = CTL_ID(inChannel + 1, out + 1, mixer->ID(), fInterface);
 				Control.id  = index;
 				Control.flags = 0;
@@ -1561,9 +1605,9 @@ AudioControlInterface::	_ListMixerUnitControls(int32& index,
 				Control.string = S_null;
 				//sprintf(Control.name, "mix:%d,%d,%d", iPin, in, out);
 				strlcpy(Control.name, control->Name(), sizeof(Control.name));
-				_InitMixLimits(Control); */
+				_InitMixLimits(Control); * /
 			}
-		}
+		}*/
 	}
 }
 
