@@ -312,6 +312,11 @@ protected:
 			void			_ListMixerUnitControls(int32& index,
 								multi_mix_control_info* Info,
 								_AudioControl* control);
+			void			_ListMixerUnitControl(const uint32** controlIds,
+								size_t inLeft, size_t outLeft,
+								size_t inRight, size_t outRight,
+								const char* inputName, const char* name,
+								Vector<multi_mix_control>& Controls);
 			void			_InitGainLimits(multi_mix_control& Control);
 			void			_InitMixLimits(multi_mix_control& Control);
 

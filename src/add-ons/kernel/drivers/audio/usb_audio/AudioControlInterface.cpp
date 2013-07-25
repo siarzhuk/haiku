@@ -51,7 +51,7 @@ struct _Designation {
 	{ B_CHANNEL_SIDE_RIGHT,			B_CHANNEL_STEREO_BUS	},
 	{ B_CHANNEL_TOP_CENTER,			B_CHANNEL_SURROUND_BUS	},
 	{ B_CHANNEL_TOP_FRONT_LEFT,		B_CHANNEL_STEREO_BUS	},
-	{ B_CHANNEL_TOP_FRONT_CENTER,	B_CHANNEL_STEREO_BUS	},
+	{ B_CHANNEL_TOP_FRONT_CENTER,	B_CHANNEL_SURROUND_BUS	},
 	{ B_CHANNEL_TOP_FRONT_RIGHT,	B_CHANNEL_STEREO_BUS	},
 	{ B_CHANNEL_TOP_BACK_LEFT,		B_CHANNEL_STEREO_BUS	},
 	{ B_CHANNEL_TOP_BACK_CENTER,	B_CHANNEL_SURROUND_BUS	},
@@ -1530,7 +1530,16 @@ AudioControlInterface::_ListMixerUnitControl(int32& index, int32 parentGroup,
 
 
 void
-AudioControlInterface::	_ListMixerUnitControls(int32& index,
+AudioControlInterface::_ListMixerUnitControl(const uint32** controlIds,
+		size_t inLeft, size_t outLeft, size_t inRight, size_t outRight,
+		const char* inputName, const char* name,
+		Vector<multi_mix_control>& Controls)
+{
+}
+
+
+void
+AudioControlInterface::_ListMixerUnitControls(int32& index,
 		multi_mix_control_info* Info, _AudioControl* control)
 {
 	MixerUnit* mixer = static_cast<MixerUnit*>(control);
@@ -1544,8 +1553,43 @@ AudioControlInterface::	_ListMixerUnitControls(int32& index,
 		const char name[sizeof(Controls[0].name)];
 		multi_mix_control Control;
 	};*/
+	
+	struct _MixerUnitControlInfo {
+		size_t inLeft;
+		size_t outLeft;
+		size_t inRight;
+		size_t outRight;
+		const char* name;
+	} controlsInfos[] = {
+		{ 1, 1, 2, 2, "" },
+		{ 1, 2, 2, 1, "(Reverse)" },
+		{ 3, 1, 3, 2, "Center" },
+		{ 4, 1, 4, 2, "L.F.E" },
+		{ 5, 1, 6, 2, "Back" },
+		{ 5, 2, 6, 1, "Back (Reverse)" },
+		{ 7, 1, 8, 2, "Front of Center" },
+		{ 7, 2, 8, 1, "Front of Center (Reverse)" },
+		{ 9, 1, 9, 2, "Back Center" },
+		{ 10, 1, 11, 2, "Side" },
+		{ 11, 1, 10, 2, "Side (Reverse)" },
+		{ 12, 1, 12, 2, "Top Center" },
+		{ 13, 1, 14, 2, "Top Front" },
+		{ 14, 2, 13, 1, "Top Front (Reverse)" },
+		{ 15, 1, 15, 1, "Top Front Center" },
+		{ 16, 1, 17, 2, "Top Back" },
+		{ 17, 2, 16, 1, "Top Back (Reverse)" },
+		{ 18, 1, 18, 1, "Top Back Center" },
+	};
 
 	AudioChannelCluster* outCluster = mixer->OutCluster();
+
+	Vector<multi_mix_control> genericMixerControls;
+	multi_mix_control pageControl; // TODO???
+	pageControl.id	= 0x10000;
+	pageControl.flags = B_MULTI_MIX_GROUP;
+	pageControl.parent = 0;
+	strlcpy(pageControl.name, "Mixer", sizeof(pageControl.name));
+	genericMixerControls.PushBack(pageControl);
 
 	int inChannel = 0;
 	int outChannel = 0;
@@ -1559,41 +1603,53 @@ AudioControlInterface::	_ListMixerUnitControls(int32& index,
 			break;
 		}
 
-		uint32 exChannelsMask = ~(B_CHANNEL_LEFT | B_CHANNEL_RIGHT);
-		bool inIsEx = (inCluster->ChannelsConfig() & exChannelsMask) != 0;
-		bool outIsEx = (outCluster->ChannelsConfig() & exChannelsMask) != 0;
+		uint32 controlIds[kDesignations][kDesignations] = { { 0 } };
 
 		for (size_t i = 0; i < kDesignations; i++) {
 			if ((inCluster->ChannelsConfig() & (1 << i)) == 0)
 				continue;
-			inChannel++;
 			
 			for (size_t o = 0; o < kDesignations; o++) {
 				if ((outCluster->ChannelsConfig() & (1 << o)) == 0)
 					continue;
-				outChannel++;
 
 				if (!mixer->IsControlProgrammable(inChannel, outChannel))
 					continue;
-
-				if (!inIsEx && !outIsEx) {
-					// TODO: collect for generic Mixer pane
-					continue;
-				}
 				
-				if (!inIsEx && outIsEx) {
-					// TODO: collect
-					continue; 
-				}
+				controlIds[inChannel][outChannel] = CTL_ID(inChannel + 1,
+					outChannel + 1, mixer->ID(), fInterface);
 				
-				if (inIsEx && !outIsEx) {
-					// TODO: collect
-					continue; 
-				}
-
-				// TODO
+				outChannel++;
 			}
+
+			inChannel++;
 		}
+
+		uint32 exChannelsMask = ~(B_CHANNEL_LEFT | B_CHANNEL_RIGHT);
+		bool inIsEx = (inCluster->ChannelsConfig() & exChannelsMask) != 0;
+		bool outIsEx = (outCluster->ChannelsConfig() & exChannelsMask) != 0;
+
+		if (!inIsEx && !outIsEx) {
+			for (size_t i = 0; i < 2; i++)
+				_ListMixerUnitControl((const uint32**)controlIds, // TODO
+					controlsInfos[i].inLeft, controlsInfos[i].outLeft,
+					controlsInfos[i].inRight, controlsInfos[i].outRight,
+					control->Name(), controlsInfos[i].name,
+					genericMixerControls);
+			continue;
+		} 
+		
+		if (!inIsEx && outIsEx) {
+			// TODO: collect
+			continue;
+		}
+		
+		if (inIsEx && !outIsEx) {
+			// TODO: collect
+			continue;
+		}
+
+		// TODO
 		/*
 		for (int in = 0; in < inCluster->ChannelsCount(); in++, inChannel++) {
 			for (int out = 0; out < outCluster->ChannelsCount(); out++) {
