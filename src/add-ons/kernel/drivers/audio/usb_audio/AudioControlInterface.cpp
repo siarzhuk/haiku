@@ -1562,34 +1562,58 @@ AudioControlInterface::_ListMixerUnitControls(int32& index,
 		const char* name;
 	} controlsInfos[] = {
 		{ 1, 1, 2, 2, "" },
-		{ 1, 2, 2, 1, "(Reverse)" },
-		{ 3, 1, 3, 2, "Center" },
-		{ 4, 1, 4, 2, "L.F.E" },
-		{ 5, 1, 6, 2, "Back" },
-		{ 5, 2, 6, 1, "Back (Reverse)" },
-		{ 7, 1, 8, 2, "Front of Center" },
-		{ 7, 2, 8, 1, "Front of Center (Reverse)" },
-		{ 9, 1, 9, 2, "Back Center" },
-		{ 10, 1, 11, 2, "Side" },
-		{ 11, 1, 10, 2, "Side (Reverse)" },
-		{ 12, 1, 12, 2, "Top Center" },
-		{ 13, 1, 14, 2, "Top Front" },
-		{ 14, 2, 13, 1, "Top Front (Reverse)" },
-		{ 15, 1, 15, 1, "Top Front Center" },
-		{ 16, 1, 17, 2, "Top Back" },
-		{ 17, 2, 16, 1, "Top Back (Reverse)" },
-		{ 18, 1, 18, 1, "Top Back Center" },
+		{ 2, 1, 1, 2, "(Reverse)" },
+		{ 1, 3, 2, 3, "Center" },
+		{ 1, 4, 2, 4, "L.F.E" },
+		{ 1, 5, 2, 6, "Back" },
+		{ 2, 5, 1, 6, "Back (Reverse)" },
+		{ 1, 7, 2, 8, "Front of Center" },
+		{ 2, 7, 1, 8, "Front of Center (Reverse)" },
+		{ 1, 9, 2, 9, "Back Center" },
+		{ 1, 10, 2, 11, "Side" },
+		{ 1, 11, 2, 10, "Side (Reverse)" },
+		{ 1, 12, 2, 12, "Top Center" },
+		{ 1, 13, 2, 15, "Top Front" },
+		{ 2, 15, 1, 13, "Top Front (Reverse)" },
+		{ 1, 14, 1, 14, "Top Front Center" },
+		{ 1, 16, 2, 18, "Top Back" },
+		{ 2, 18, 1, 16, "Top Back (Reverse)" },
+		{ 1, 17, 1, 17, "Top Back Center" }
 	};
 
-	AudioChannelCluster* outCluster = mixer->OutCluster();
+	struct _MixerPageInfo {
+		size_t inLeft;
+		size_t inRight;
+		const char* name;
+	} pagesInfos[] = {
+		{ 1, 2, "" },
+		{ 3, 3, "Center" },
+		{ 4, 4, "L.F.E" },
+		{ 5, 6, "Back" },
+		{ 7, 8, "Front of Center" },
+		{ 9, 9, "Back Center" },
+		{ 10, 11, "Side" },
+		{ 12, 12, "Top Center" },
+		{ 13, 15, "Top Front" },
+		{ 14, 14, "Top Front Center" },
+		{ 16, 18, "Top Back" },
+		{ 17, 17, "Top Back Center" }
+	};
 
-	Vector<multi_mix_control> genericMixerControls;
-	multi_mix_control pageControl; // TODO???
-	pageControl.id	= 0x10000;
+	// allocate for the most worst case: easy mixer + full-blown cluster
+	Vector<multi_mix_control> controls[1 + mixer->fInputPins.Count()
+		* _countof(pagesInfos)];
+
+	multi_mix_control pageControl;
+//	pageControl.id	= 0x10000;
 	pageControl.flags = B_MULTI_MIX_GROUP;
-	pageControl.parent = 0;
+//	pageControl.parent = 0;
 	strlcpy(pageControl.name, "Mixer", sizeof(pageControl.name));
-	genericMixerControls.PushBack(pageControl);
+	controls[0].PushBack(pageControl);
+	
+	size_t extPageIndex = 1;
+
+	AudioChannelCluster* outCluster = mixer->OutCluster();
 
 	int inChannel = 0;
 	int outChannel = 0;
@@ -1603,6 +1627,7 @@ AudioControlInterface::_ListMixerUnitControls(int32& index,
 			break;
 		}
 
+		// collect programmable control ids
 		uint32 controlIds[kDesignations][kDesignations] = { { 0 } };
 
 		for (size_t i = 0; i < kDesignations; i++) {
@@ -1625,30 +1650,63 @@ AudioControlInterface::_ListMixerUnitControls(int32& index,
 			inChannel++;
 		}
 
+		// optimally allocate controls on mixer pages 
 		uint32 exChannelsMask = ~(B_CHANNEL_LEFT | B_CHANNEL_RIGHT);
 		bool inIsEx = (inCluster->ChannelsConfig() & exChannelsMask) != 0;
 		bool outIsEx = (outCluster->ChannelsConfig() & exChannelsMask) != 0;
 
 		if (!inIsEx && !outIsEx) {
+			// heap up into the easy mixer page
 			for (size_t i = 0; i < 2; i++)
 				_ListMixerUnitControl((const uint32**)controlIds, // TODO
 					controlsInfos[i].inLeft, controlsInfos[i].outLeft,
 					controlsInfos[i].inRight, controlsInfos[i].outRight,
 					control->Name(), controlsInfos[i].name,
-					genericMixerControls);
-			continue;
+					controls[0]);
+			continue; // to next input pin
 		} 
 		
-		if (!inIsEx && outIsEx) {
-			// TODO: collect
-			continue;
-		}
-		
-		if (inIsEx && !outIsEx) {
-			// TODO: collect
-			continue;
-		}
+		if ((!inIsEx && outIsEx) || (inIsEx && !outIsEx)) {
+			// separate mixer page for the input cluster
+			multi_mix_control pageControl;
+			pageControl.flags = B_MULTI_MIX_GROUP;
+			strlcpy(pageControl.name, control->Name(), sizeof(pageControl.name));
+			controls[extPageIndex].PushBack(pageControl);
+			
+			for (size_t i = 0; i < _countof(controlsInfos); i++)
+				_ListMixerUnitControl((const uint32**)controlIds, // TODO
+					outIsEx ? controlsInfos[i].inLeft : controlsInfos[i].outLeft,
+					outIsEx ? controlsInfos[i].outLeft : controlsInfos[i].inLeft,
+					outIsEx ? controlsInfos[i].inRight : controlsInfos[i].outRight,
+					outIsEx ? controlsInfos[i].outRight : controlsInfos[i].inRight,
+					control->Name(), controlsInfos[i].name,
+					controls[extPageIndex]);
 
+			extPageIndex++;
+			continue; // to next input pin
+		}
+#if 0
+		// inIsEx && outIsEx
+		for (size_t i = 0; i < _countof(pagesInfos); i++) {
+			multi_mix_control pageControl;
+			pageControl.flags = B_MULTI_MIX_GROUP;
+			strlcpy(pageControl.name, control->Name(), sizeof(pageControl.name));
+			controls[extPageIndex].PushBack(pageControl);
+			
+			for (size_t i = 0; i < _countof(controlsInfos); i++)
+				_ListMixerUnitControl((const uint32**)controlIds, // TODO
+					controlsInfos[i].inLeft,
+					controlsInfos[i].outLeft,
+					controlsInfos[i].inRight,
+					controlsInfos[i].outRight,
+					control->Name(), controlsInfos[i].name,
+					controls[extPageIndex]);
+
+			extPageIndex++;
+			pagesInfos[i];
+		}
+#endif
+		// 
 		// TODO
 		/*
 		for (int in = 0; in < inCluster->ChannelsCount(); in++, inChannel++) {
