@@ -257,6 +257,12 @@ protected:
 
 class AudioControlInterface {
 public:
+			enum {
+				kLeftChannel = 0,
+				kRightChannel = 1,
+				kChannels = 18
+			};
+
 							AudioControlInterface(Device* device);
 							~AudioControlInterface();
 
@@ -306,19 +312,20 @@ protected:
 			void			_ListSelectorUnitControl(int32& index,
 								int32 parentGroup, multi_mix_control_info* Info,
 								_AudioControl* control);
-//			void			_ListMixerUnitControl(int32& index,
-//								int32 parentGroup, multi_mix_control_info* Info,
-//								_AudioControl* control);
-			void			_ListMixerUnitControls(int32& index,
+			void			_ListMixControlsForMixerUnit(int32& index,
 								multi_mix_control_info* Info,
 								_AudioControl* control);
-			void			_ListMixerUnitControl(const uint32** controlIds,
+			void			_ListMixerUnitControls(int32& index,
+								multi_mix_control_info* Info,
+								Vector<multi_mix_control>& controls);
+			void			_CollectMixerUnitControls(
+								const uint32 controlIds[kChannels][kChannels],
 								size_t inLeft, size_t outLeft,
 								size_t inRight, size_t outRight,
 								const char* inputName, const char* name,
 								Vector<multi_mix_control>& Controls);
-			void			_InitGainLimits(multi_mix_control& Control);
-			void			_InitMixLimits(multi_mix_control& Control);
+			bool			_InitGainLimits(multi_mix_control& Control);
+//			void			_InitMixLimits(multi_mix_control& Control);
 
 			size_t			fInterface;
 			status_t		fStatus;
@@ -335,6 +342,16 @@ protected:
 			AudioControlsMap	fOutputTerminals;
 			// map to store output terminal and lookup them by control ID
 			AudioControlsMap	fInputTerminals;
+	
+			struct _MixPageCollector : public Vector<multi_mix_control> {
+				_MixPageCollector(const char* pageName) {
+					multi_mix_control page;
+					memset(&page, 0, sizeof(multi_mix_control));
+					page.flags = B_MULTI_MIX_GROUP;
+					strlcpy(page.name, pageName, sizeof(page.name));
+					PushBack(page);
+				}
+			};
 };
 
 

@@ -32,12 +32,10 @@
 #define REQ_INDEX(_ID) (0xffff & (_ID))
 
 
-const size_t kDesignations = 18;
-
 struct _Designation {
 	uint32 ch;
 	uint32 bus;
-} gDesignations[kDesignations] = {
+} gDesignations[AudioControlInterface::kChannels] = {
 	{ B_CHANNEL_LEFT,				B_CHANNEL_STEREO_BUS	},
 	{ B_CHANNEL_RIGHT,				B_CHANNEL_STEREO_BUS	},
 	{ B_CHANNEL_CENTER,				B_CHANNEL_SURROUND_BUS	},
@@ -152,7 +150,7 @@ _Terminal::_GetTerminalDescription(uint16 TerminalType)
 	} termInfoPairs[] = {
 		// USB Terminal Types
 		{ USB_AUDIO_UNDEFINED_USB_IO,		"USB I/O" },
-		{ USB_AUDIO_STREAMING_USB_IO,		"USB Streaming I/O" },
+		{ USB_AUDIO_STREAMING_USB_IO,		"USB I/O" },
 		{ USB_AUDIO_VENDOR_USB_IO,			"Vendor USB I/O" },
 		// Input Terminal Types
 		{ USB_AUDIO_UNDEFINED_IN,			"Undefined Input" },
@@ -353,6 +351,17 @@ MixerUnit::MixerUnit(AudioControlInterface*	interface,
 		mixerControlsData = (uint8*) ++OutChannels;
 		mixerControlsSize = Mixer->length - 10 - Mixer->num_input_pins;
 		fStringIndex = *(mixerControlsData + mixerControlsSize);
+
+#if 1 // TEST
+		if (fOutChannelsNumber > 2) {
+			fOutChannelsNumber = 2;
+			fChannelsConfig = 0x03;
+			mixerControlsData[0] = 0x9f;
+			mixerControlsData[1] = 0x99;
+			mixerControlsData[2] = 0x90;
+		}
+#endif		
+
 	} else {
 		usb_audio_output_channels_descriptor* OutChannels
 			= (usb_audio_output_channels_descriptor*)
@@ -404,8 +413,21 @@ MixerUnit::HasProgrammableControls()
 bool
 MixerUnit::IsControlProgrammable(int inChannel, int outChannel)
 {
-	// TODO
-	return false;
+	AudioChannelCluster* outCluster = OutCluster();
+	if (outCluster == NULL) {
+		TRACE(ERR, "Output cluster is not valid.\n");
+		return false;
+	}
+
+	bool result = false;
+	if (outChannel < outCluster->ChannelsCount()) {
+		int index = inChannel * outCluster->ChannelsCount()+ outChannel;
+		result = (fControlsBitmap[index >> 3] & (0x80 >> (index & 7))) != 0;
+	}
+
+	TRACE(UAC, "in:%d out:%d is %s\n",
+		inChannel, outChannel, result ? "on" : "off");
+	return result;
 }
 
 
@@ -1058,7 +1080,7 @@ AudioControlInterface::GetTerminalChannels(Vector<multi_channel_info>& Channels,
 
 	// Haiku multi-aduio designations have the same bits
 	// as USB Audio 2.0 cluster spatial locations :-)
-	for (size_t i = 0; i < kDesignations; i++) {
+	for (size_t i = 0; i < kChannels; i++) {
 		uint32 designation = 1 << i;
 		if ((cluster->ChannelsConfig() & designation) == designation) {
 			multi_channel_info info;
@@ -1157,14 +1179,17 @@ AudioControlInterface::_HarvestRecordFeatureUnits(_AudioControl* rootControl,
 }
 
 
-void
+bool
 AudioControlInterface::_InitGainLimits(multi_mix_control& Control)
 {
+	bool canControl = false;
+	float current = 0.;
 	struct _GainInfo {
 		uint8	request;
 		int16	data;
 		float&	value;
 	} gainInfos[] = {
+		{ USB_AUDIO_GET_CUR, 0, current },
 		{ USB_AUDIO_GET_MIN, 0, Control.gain.min_gain },
 		{ USB_AUDIO_GET_MAX, 0, Control.gain.max_gain },
 		{ USB_AUDIO_GET_RES, 0, Control.gain.granularity }
@@ -1189,14 +1214,18 @@ AudioControlInterface::_InitGainLimits(multi_mix_control& Control)
 			continue;
 		}
 
+		if (i == 0)
+			canControl = true;
+
 		gainInfos[i].value = static_cast<float>(gainInfos[i].data) / 256.;
 	}
 
 	TRACE(ERR, "Control %s: from %f to %f dB, step %f dB.\n", Control.name,
 		Control.gain.min_gain, Control.gain.max_gain, Control.gain.granularity);
+	return canControl;
 }
 
-
+/*
 void
 AudioControlInterface::_InitMixLimits(multi_mix_control& Control)
 {
@@ -1238,7 +1267,7 @@ AudioControlInterface::_InitMixLimits(multi_mix_control& Control)
 		Control.name, Control.gain.min_gain, Control.gain.max_gain,
 		Control.gain.granularity, cur);
 }
-
+*/
 
 uint32
 AudioControlInterface::_ListFeatureUnitOption(uint32 controlType,
@@ -1314,6 +1343,13 @@ AudioControlInterface::_ListFeatureUnitControl(int32& index, int32 parentIndex,
 	FeatureUnit* unit = static_cast<FeatureUnit*>(control);
 	if (unit == 0) {
 		TRACE(ERR, "Feature Unit for null control ignored.\n");
+		return 0;
+	}
+
+	if (index + 4 > Info->control_count) {
+		TRACE(ERR, "Could not list feature control group."
+			" Limit %d of %d has been reached.\n",
+			index, Info->control_count);
 		return 0;
 	}
 
@@ -1435,6 +1471,13 @@ AudioControlInterface::_ListSelectorUnitControl(int32& index, int32 parentGroup,
 	if (selector == 0 || selector->SubType() != USB_AUDIO_AC_SELECTOR_UNIT)
 		return;
 
+	if ((index + 1 + selector->fInputPins.Count()) > Info->control_count) {
+		TRACE(ERR, "Could not list selector control."
+			" Limit %d of %d has been reached.\n",
+			index, Info->control_count);
+		return;
+	}
+
 	multi_mix_control* Controls = Info->controls;
 
 	int32 recordMUX = CTL_ID(0, 0, selector->ID(), fInterface);
@@ -1462,172 +1505,134 @@ AudioControlInterface::_ListSelectorUnitControl(int32& index, int32 parentGroup,
 	}
 }
 
-/*
-void
-AudioControlInterface::_ListMixerUnitControl(int32& index, int32 parentGroup,
-		multi_mix_control_info* Info, _AudioControl* control)
-{
-	MixerUnit* mixer = static_cast<MixerUnit*>(control);
-	if (mixer == 0 || mixer->SubType() != USB_AUDIO_AC_MIXER_UNIT)
-		return;
-
-//	multi_mix_control* Controls = Info->controls;
-	AudioChannelCluster* outCluster = mixer->OutCluster();
-
-	int inChannel = 0;
-	for (int iPin = 0; iPin < mixer->fInputPins.Count(); iPin++) {
-		_AudioControl* control = Find(mixer->fInputPins[iPin]);
-		AudioChannelCluster* inCluster = NULL;
-		if (control != NULL)
-			inCluster = control->OutCluster();
-		if (inCluster == NULL) {
-			TRACE(ERR, "control %p cluster %p failed!\n", control, inCluster);
-			break;
-		}
-
-		for (int in = 0; in < inCluster->ChannelsCount(); in++, inChannel++) {
-			for (int out = 0; out < outCluster->ChannelsCount(); out++) {
-				multi_mix_control Control = { 0 };
-				uint32 index = CTL_ID(inChannel + 1, out + 1, mixer->ID(), fInterface);
-				Control.id  = index;
-				Control.flags = 0;
-				Control.parent = 0;
-				Control.string = S_null;
-				//sprintf(Control.name, "mix:%d,%d,%d", iPin, in, out);
-				strlcpy(Control.name, control->Name(), sizeof(Control.name));
-				_InitMixLimits(Control);
-			}
-		}
-	}
-
-#if 0	
-	int32 recordMUX = CTL_ID(0, 0, selector->ID(), fInterface);
-	Controls[index].id	= recordMUX;
-	Controls[index].flags = B_MULTI_MIX_MUX;
-	Controls[index].parent = parentGroup;
-	Controls[index].string = S_null;
-	strlcpy(Controls[index].name, "Source", sizeof(Controls[index].name));
-	index++;
-
-	for (int i = 0; i < selector->fInputPins.Count(); i++) {
-		Controls[index].id = CTL_ID(0, 1, selector->ID(), fInterface);
-		Controls[index].flags = B_MULTI_MIX_MUX_VALUE;
-		Controls[index].master = 0;
-		Controls[index].string = S_null;
-		Controls[index].parent = recordMUX;
-		_AudioControl* control = Find(selector->fInputPins[i]);
-		if (control != NULL)
-			strlcpy(Controls[index].name,
-				control->Name(), sizeof(Controls[index].name));
-		else
-			snprintf(Controls[index].name,
-				sizeof(Controls[index].name), "Input #%d", i + 1);
-		index++;
-	}
-#endif
-}
-*/
-
 
 void
-AudioControlInterface::_ListMixerUnitControl(const uint32** controlIds,
+AudioControlInterface::_CollectMixerUnitControls(
+		const uint32 controlIds[kChannels][kChannels],
 		size_t inLeft, size_t outLeft, size_t inRight, size_t outRight,
 		const char* inputName, const char* name,
 		Vector<multi_mix_control>& Controls)
 {
-	// TODO
-	// TODO - reversed too!
+	uint32 leftId = controlIds[inLeft][outLeft];
+	uint32 rightId = controlIds[inRight][outRight];
+	
+	multi_mix_control control;
+	memset(&control, 0, sizeof(multi_mix_control));
+	snprintf(control.name, sizeof(control.name), "%s %s", inputName, name);
+
+	for (size_t i = 0; i < 2; i++) {
+		if (leftId != 0 || rightId != 0) {
+			control.flags = B_MULTI_MIX_GROUP;
+			control.string = S_null;
+			Controls.PushBack(control);
+		}
+	
+//		int count = Controls.Count();
+
+		if (leftId != 0) {
+			control.id = leftId;
+			control.flags = B_MULTI_MIX_GAIN;
+			control.string = S_GAIN;
+			if (_InitGainLimits(control))   ;
+				Controls.PushBack(control);
+		}
+
+		if (rightId != 0) {
+			control.id = rightId;
+			control.flags = B_MULTI_MIX_GAIN;
+			control.string = S_GAIN;
+			control.master = leftId;
+			if (_InitGainLimits(control))   ;
+				Controls.PushBack(control);
+		}
+/*
+		if (count == Controls.Count())
+			// no gain controls were added - remove empty mix group
+			Controls.PopBack();
+*/	
+		// take care about surround bus
+		if (inLeft == inRight)
+			break;
+		// handle possible reverse controls
+		leftId = controlIds[inLeft][outRight];
+		rightId = controlIds[inRight][outLeft];
+		snprintf(control.name, sizeof(control.name),
+			"%s %s (Reverse)", inputName, name);
+	}
 }
 
 
 void
 AudioControlInterface::_ListMixerUnitControls(int32& index,
+		multi_mix_control_info* Info, Vector<multi_mix_control>& controls)
+{
+	multi_mix_control* Controls = Info->controls;
+	uint32 groupParent = 0;
+	uint32 gainParent = 0;
+	for (Vector<multi_mix_control>::Iterator I = controls.Begin();
+			I != controls.End() && index < Info->control_count; I++) {
+		memcpy(Controls + index, &*I, sizeof(multi_mix_control));
+		switch (I->flags) {
+			case B_MULTI_MIX_GROUP:
+				Controls[index].id = index;
+				Controls[index].parent = groupParent;
+				if (groupParent == 0) {
+					Controls[index].id |= 0x10000;
+					groupParent = Controls[index].id;
+				}
+				gainParent = Controls[index].id;
+				break;
+			case B_MULTI_MIX_GAIN:
+				Controls[index].parent = gainParent;
+				break;
+			default:
+				TRACE(ERR, "Control type %d ignored\n", I->flags);
+				continue;
+		}
+
+		index++;
+	}
+
+	if (index == Info->control_count)
+		TRACE(ERR, "Control count limit %d has been reached.\n", index);
+}
+
+
+void
+AudioControlInterface::_ListMixControlsForMixerUnit(int32& index,
 		multi_mix_control_info* Info, _AudioControl* control)
 {
 	MixerUnit* mixer = static_cast<MixerUnit*>(control);
 	if (mixer == 0 || mixer->SubType() != USB_AUDIO_AC_MIXER_UNIT)
 		return;
 
-/*	multi_mix_control* Controls = Info->controls;
-	struct _MixerControl {
-		uint32 index;
-		uint32 flags;
-		const char name[sizeof(Controls[0].name)];
-		multi_mix_control Control;
-	};*/
-	
-/*	struct _MixerUnitControlInfo {
-		size_t inLeft;
-		size_t outLeft;
-		size_t inRight;
-		size_t outRight;
-		const char* name;
-	} controlsInfos[] = {
-		{ 1, 1, 2, 2, "" },
-		{ 2, 1, 1, 2, "(Reverse)" },
-		{ 1, 3, 2, 3, "Center" },
-		{ 1, 4, 2, 4, "L.F.E" },
-		{ 1, 5, 2, 6, "Back" },
-		{ 2, 5, 1, 6, "Back (Reverse)" },
-		{ 1, 7, 2, 8, "Front of Center" },
-		{ 2, 7, 1, 8, "Front of Center (Reverse)" },
-		{ 1, 9, 2, 9, "Back Center" },
-		{ 1, 10, 2, 11, "Side" },
-		{ 1, 11, 2, 10, "Side (Reverse)" },
-		{ 1, 12, 2, 12, "Top Center" },
-		{ 1, 13, 2, 15, "Top Front" },
-		{ 2, 15, 1, 13, "Top Front (Reverse)" },
-		{ 1, 14, 1, 14, "Top Front Center" },
-		{ 1, 16, 2, 18, "Top Back" },
-		{ 2, 18, 1, 16, "Top Back (Reverse)" },
-		{ 1, 17, 1, 17, "Top Back Center" }
-	}; */
-
-	struct _MixerPageInfo {
+	struct _ChannelPair {
 		size_t inLeft;
 		size_t inRight;
 		const char* name;
-	} pagesInfos[] = {
-		{ 1, 2, "" },
-		{ 3, 3, "Center" },
-		{ 4, 4, "L.F.E" },
-		{ 5, 6, "Back" },
-		{ 7, 8, "Front of Center" },
-		{ 9, 9, "Back Center" },
-		{ 10, 11, "Side" },
-		{ 12, 12, "Top Center" },
-		{ 13, 15, "Top Front" },
-		{ 14, 14, "Top Front Center" },
-		{ 16, 18, "Top Back" },
-		{ 17, 17, "Top Back Center" }
+	} channelPairs[] = {
+		{ 0, 1, "" },
+		{ 2, 2, "Center" },
+		{ 3, 3, "L.F.E" },
+		{ 4, 5, "Back" },
+		{ 6, 7, "Front of Center" },
+		{ 8, 8, "Back Center" },
+		{ 9, 10, "Side" },
+		{ 11, 11, "Top Center" },
+		{ 12, 14, "Top Front" },
+		{ 13, 13, "Top Front Center" },
+		{ 15, 17, "Top Back" },
+		{ 16, 16, "Top Back Center" }
 	};
-
-	// allocate for the most worst case: easy mixer + full-blown cluster
-//	size_t maxControlsCount = 1 + mixer->fInputPins.Count() * _countof(pagesInfos);
-//	Vector<multi_mix_control> controls[maxControlsCount];
-	Vector<Vector<multi_mix_control> > mixControls;
-//	mixControls.PushBack(Vector<multi_mix_control>());
-
-	multi_mix_control page;
-//	pageControl.id	= 0x10000;
-	page.flags = B_MULTI_MIX_GROUP;
-//	pageControl.parent = 0;
-	strlcpy(page.name, "Mixer", sizeof(page.name));
 	
-	Vector<multi_mix_control> genericMixer;
-	genericMixer.PushBack(page);
-
-	mixControls.PushBack(genericMixer);
+	Vector<_MixPageCollector*> mixControls;
 	
-	const size_t kLeft = 1;
-	const size_t kRight = 2;
-
-//	size_t extPageIndex = 1;
-
+	_MixPageCollector* genericPage = new _MixPageCollector("Mixer"); 
+	mixControls.PushBack(genericPage);
+	
 	AudioChannelCluster* outCluster = mixer->OutCluster();
 
-	int inChannel = 0;
-	int outChannel = 0;
+	int inOffset = 0;
 	for (int iPin = 0; iPin < mixer->fInputPins.Count(); iPin++) {
 		_AudioControl* control = Find(mixer->fInputPins[iPin]);
 		AudioChannelCluster* inCluster = NULL;
@@ -1638,22 +1643,32 @@ AudioControlInterface::_ListMixerUnitControls(int32& index,
 			break;
 		}
 
-		// collect programmable control ids
-		uint32 controlIds[kDesignations][kDesignations] = { { 0 } };
+		// at first - collect programmable control ids
+		uint32 controlIds[kChannels][kChannels] = { { 0 } };
 
-		for (size_t i = 0; i < kDesignations; i++) {
-			if ((inCluster->ChannelsConfig() & (1 << i)) == 0)
+		int inChannel = 0;
+		for (size_t in = 0; in < kChannels
+				&& inChannel < inCluster->ChannelsCount(); in++) {
+			if ((inCluster->ChannelsConfig() & (1 << in)) == 0)
 				continue;
 			
-			for (size_t o = 0; o < kDesignations; o++) {
-				if ((outCluster->ChannelsConfig() & (1 << o)) == 0)
+			for (size_t out = 0, outChannel = 0; out < kChannels
+					&& outChannel < outCluster->ChannelsCount(); out++) {
+				if ((outCluster->ChannelsConfig() & (1 << out)) == 0)
 					continue;
 
-				if (!mixer->IsControlProgrammable(inChannel, outChannel))
-					continue;
-				
-				controlIds[inChannel][outChannel] = CTL_ID(inChannel + 1,
-					outChannel + 1, mixer->ID(), fInterface);
+				if (mixer->IsControlProgrammable(
+						inOffset + inChannel, outChannel)) {
+					if (SpecReleaseNumber() < 0x200)
+						// USB Audio 1.0 uses ICN/OCN for request
+						controlIds[in][out] = CTL_ID(inOffset + inChannel + 1,
+							outChannel + 1, mixer->ID(), fInterface);
+					else
+						// USB Audio 2.0 uses CS/MCN for request
+						controlIds[in][out] = CTL_ID(USB_AUDIO_MIXER_CONTROL,
+							(inOffset + inChannel) * outCluster->ChannelsCount()
+							+ outChannel, mixer->ID(), fInterface);
+				}
 				
 				outChannel++;
 			}
@@ -1661,91 +1676,77 @@ AudioControlInterface::_ListMixerUnitControls(int32& index,
 			inChannel++;
 		}
 
-		// optimally collect controls and mixer pages 
+		inOffset += inChannel;
+
+		for (size_t in = 0; in < kChannels; in++)
+			for (size_t out = 0; out < kChannels; out++)
+				if (controlIds[in][out] != 0)
+					TRACE(UAC, "ctrl:%08x for in %d; out %d;\n",
+						controlIds[in][out], in, out);
+
+		// second step - distribute controls on
+		// mixer pages in logical groups  
 		uint32 exChannelsMask = ~(B_CHANNEL_LEFT | B_CHANNEL_RIGHT);
 		bool inIsEx = (inCluster->ChannelsConfig() & exChannelsMask) != 0;
 		bool outIsEx = (outCluster->ChannelsConfig() & exChannelsMask) != 0;
 
 		if (!inIsEx && !outIsEx) {
-			// heap up all 2-channel controls into generic mixer page
+			// heap up all mono and stereo controls into single "Mixer" page
 			for (size_t i = 0; i < 2; i++)
-				_ListMixerUnitControl((const uint32**)controlIds, // TODO
-					kLeft, pagesInfos[i].inLeft, kRight, pagesInfos[i].inRight,
-					control->Name(), pagesInfos[i].name,
-					mixControls[0]);
-			continue; // to next input pin
+				_CollectMixerUnitControls(controlIds,
+					kLeftChannel, channelPairs[i].inLeft,
+					kRightChannel, channelPairs[i].inRight,
+					control->Name(), channelPairs[i].name,
+					*mixControls[0]);
+			continue; // go next input cluster
 		} 
 		
 		if (!outIsEx) {
-			// special case - separate mixer page for the input cluster
-			multi_mix_control page;
-			page.flags = B_MULTI_MIX_GROUP;
-			strlcpy(page.name, control->Name(), sizeof(page.name));
+			// special case - create separate mixer page for
+			// extended (>2 channels) input cluster connected
+			// to 2-channels output
+			_MixPageCollector* mixerPage
+				= new _MixPageCollector(control->Name()); 
 			
-			Vector<multi_mix_control> mixerPage;
-			mixerPage.PushBack(page);
-			//controls[extPageIndex].PushBack(page);
-			
-			for (size_t i = 0; i < _countof(pagesInfos); i++)
-				_ListMixerUnitControl((const uint32**)controlIds, // TODO
-					pagesInfos[i].inLeft, kLeft, pagesInfos[i].inRight, kRight,
-					control->Name(), pagesInfos[i].name,
-					//controls[extPageIndex]);
-					mixerPage);
+			for (size_t i = 0; i < _countof(channelPairs); i++)
+				_CollectMixerUnitControls(controlIds,
+					channelPairs[i].inLeft, kLeftChannel,
+					channelPairs[i].inRight, kRightChannel,
+					channelPairs[i].name, "", *mixerPage);
 
-			//if (controls[extPageIndex].Count() > 1)
-			if (mixerPage.Count() > 1)
+			if (mixerPage->Count() > 1)
 				mixControls.PushBack(mixerPage);
-			//	extPageIndex++;
-			//else
-			//	controls[extPageIndex].MakeEmpty();
-			continue; // to next input pin
+			TRACE(UAC, "1:mixControls count: %d\n", mixControls.Count());
+			continue; // go next input cluster
 		}
 
-		for (size_t in = 0; in < _countof(pagesInfos); in++) {
-			multi_mix_control page;
-			page.flags = B_MULTI_MIX_GROUP;
-			strlcpy(page.name, control->Name(), sizeof(page.name));
+		// make separate mixer page for every logical set of input
+		// channels connected to extended (>2 channels) output
+		for (size_t in = 0; in < _countof(channelPairs); in++) {
+			_MixPageCollector* mixerPage
+				= new _MixPageCollector(control->Name()); 
 			
-			Vector<multi_mix_control> mixerPage;
-			mixerPage.PushBack(page);
-			//controls[extPageIndex].PushBack(pageControl);
-			
-			for (size_t out = 0; out < _countof(pagesInfos); out++)
-				_ListMixerUnitControl((const uint32**)controlIds, // TODO
-					pagesInfos[in].inLeft, pagesInfos[out].inLeft,
-					pagesInfos[in].inRight, pagesInfos[out].inRight,
-					pagesInfos[in].name, pagesInfos[out].name,
-					//controls[extPageIndex]);
-					mixerPage);
+			for (size_t out = 0; out < _countof(channelPairs); out++)
+				_CollectMixerUnitControls(controlIds,
+					channelPairs[in].inLeft, channelPairs[out].inLeft,
+					channelPairs[in].inRight, channelPairs[out].inRight,
+					channelPairs[out].name, "", *mixerPage);
 
-			/*if (controls[extPageIndex].Count() > 1)
-				extPageIndex++;
-			else
-				controls[extPageIndex].MakeEmpty();*/
-			if (mixerPage.Count() > 1)
+			if (mixerPage->Count() > 1)
 				mixControls.PushBack(mixerPage);
+			TRACE(UAC, "2:mixControls count: %d\n", mixControls.Count());
 		}
-
-		// finally fill controls information using collected info
-		multi_mix_control* Controls = Info->controls;
-
-		// 
-		// TODO
-		/*
-		for (int in = 0; in < inCluster->ChannelsCount(); in++, inChannel++) {
-			for (int out = 0; out < outCluster->ChannelsCount(); out++) {
-			/ *	multi_mix_control Control = { 0 };
-				uint32 index = CTL_ID(inChannel + 1, out + 1, mixer->ID(), fInterface);
-				Control.id  = index;
-				Control.flags = 0;
-				Control.parent = 0;
-				Control.string = S_null;
-				//sprintf(Control.name, "mix:%d,%d,%d", iPin, in, out);
-				strlcpy(Control.name, control->Name(), sizeof(Control.name));
-				_InitMixLimits(Control); * /
-			}
-		}*/
+	}
+	
+	// final step - fill multiaudio controls info with
+	// already structured pages/controls info arrays
+	for (Vector<_MixPageCollector*>::Iterator I = mixControls.Begin();
+			I != mixControls.End(); I++) {
+		Vector<multi_mix_control>* controls = *I;
+			TRACE(UAC, "controls count: %d\n", controls->Count());
+		if (controls->Count() > 1)
+			_ListMixerUnitControls(index, Info, *controls);
+		delete controls;
 	}
 }
 
@@ -1773,9 +1774,8 @@ AudioControlInterface::_ListMixControlsPage(int32& index,
 			case USB_AUDIO_AC_SELECTOR_UNIT:
 				_ListSelectorUnitControl(index, group, Info, I->Value());
 				break;
-/*			case USB_AUDIO_AC_MIXER_UNIT:
-				_ListMixerUnitControl(index, group, Info, I->Value());
-				break;*/
+			default:
+				break;
 		}
 	}
 }
@@ -1805,8 +1805,8 @@ AudioControlInterface::ListMixControls(multi_mix_control_info* Info)
 		_AudioControl* control = I->Value();
 
 		if (control->SubType() == USB_AUDIO_AC_MIXER_UNIT) {
-	//		MixerUnit* mixerControl = static_cast<MixerUnit*>(control);
-		//TODO	if (mixerControl->HasProgrammableControls())
+			MixerUnit* mixerControl = static_cast<MixerUnit*>(control);
+			if (mixerControl->HasProgrammableControls())
 				MixerControlsMap.Put(control->ID(), control);
 			continue;
 		}
@@ -1839,12 +1839,8 @@ AudioControlInterface::ListMixControls(multi_mix_control_info* Info)
 
 
 	for (AudioControlsIterator I = MixerControlsMap.Begin();
-			I != MixerControlsMap.End(); I++) {
-	//	if (MixerControlsMap.Count() > 0)
-	//	_ListMixControlsPage(index, Info, MixerControlsMap, "Mixer");
-		_ListMixerUnitControls(index, Info, I->Value());
-		
-	}
+			I != MixerControlsMap.End(); I++)
+		_ListMixControlsForMixerUnit(index, Info, I->Value());
 
 	return B_OK;
 }
@@ -1885,7 +1881,7 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 				length = 1;
 				break;
 			case USB_AUDIO_AC_MIXER_UNIT:
-				length = 2; // TODO ?
+				length = 2;
 				break;
 			default:
 				// TODO
@@ -1899,7 +1895,8 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 			length, &data, &actualLength);
 
 		if (status != B_OK || actualLength != length) {
-			TRACE(ERR, "Request failed:%#08x; received %d of %d\n",
+			TRACE(ERR, "Request (%04x:%04x) failed:%#08x; received %d of %d\n",
+				REQ_VALUE(Info->values[i].id), REQ_INDEX(Info->values[i].id),
 				status, actualLength, length);
 			continue;
 		}
@@ -1928,12 +1925,6 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 							CN_FROM_CTLID(Info->values[i].id),
 							Info->values[i].enable);
 						break;
-				/*	case 0: // Selector Unit
-						Info->values[i].mux = data - 1;
-						TRACE(MIX, "Selector control %d; is %d.\n",
-							ID_FROM_CTLID(Info->values[i].id),
-							Info->values[i].mux);
-						break; */
 					default:
 						break;
 				}
@@ -1945,7 +1936,12 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 					Info->values[i].mux);
 				break;
 			case USB_AUDIO_AC_MIXER_UNIT:
-				// TODO
+				Info->values[i].gain = static_cast<float>(data) / 256.;
+				TRACE(MIX, "Mixer #%d channels in: %d; out: %d; is %f dB.\n",
+					ID_FROM_CTLID(Info->values[i].id),
+					CS_FROM_CTLID(Info->values[i].id),
+					CN_FROM_CTLID(Info->values[i].id),
+					Info->values[i].gain);
 				break;
 		}
 	}
@@ -1998,13 +1994,6 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 							CN_FROM_CTLID(Info->values[i].id),
 							Info->values[i].enable);
 						break;
-					/*case 0: // Selector Unit
-						data = Info->values[i].mux + 1;
-						length = 1;
-						TRACE(MIX, "Selector Control %d about to set to %d.\n",
-							ID_FROM_CTLID(Info->values[i].id),
-							Info->values[i].mux);
-						break;*/
 					default:
 						TRACE(ERR, "Unsupported control type %#02x ignored.\n",
 							CS_FROM_CTLID(Info->values[i].id));
@@ -2019,7 +2008,14 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 					Info->values[i].mux);
 				break;
 			case USB_AUDIO_AC_MIXER_UNIT:
-				// TODO
+				data = static_cast<int16>(Info->values[i].gain * 256.);
+				length = 2;
+				TRACE(MIX, "Mixer %d channels in: %d; out: %d; "
+					"about to set to %f dB.\n",
+					ID_FROM_CTLID(Info->values[i].id),
+					CS_FROM_CTLID(Info->values[i].id),
+					CN_FROM_CTLID(Info->values[i].id),
+					Info->values[i].gain);
 				break;
 			default:
 				// TODO
@@ -2033,7 +2029,8 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 			length, &data, &actualLength);
 
 		if (status != B_OK || actualLength != length) {
-			TRACE(ERR, "Request failed:%#08x; send %d of %d\n",
+			TRACE(ERR, "Request (%04x:%04x) failed:%#08x; send %d of %d\n",
+				REQ_VALUE(Info->values[i].id), REQ_INDEX(Info->values[i].id),
 				status, actualLength, length);
 			continue;
 		}
