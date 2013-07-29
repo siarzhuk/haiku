@@ -104,6 +104,8 @@ public:
 							InputTerminal(AudioControlInterface* interface,
 								usb_audiocontrol_header_descriptor* Header);
 	virtual					~InputTerminal();
+	
+	virtual	const char*		Name();
 
 protected:
 };
@@ -114,6 +116,8 @@ public:
 							OutputTerminal(AudioControlInterface* interface,
 								usb_audiocontrol_header_descriptor* Header);
 	virtual					~OutputTerminal();
+
+	virtual	const char*		Name();
 
 protected:
 };
@@ -318,14 +322,13 @@ protected:
 			void			_ListMixerUnitControls(int32& index,
 								multi_mix_control_info* Info,
 								Vector<multi_mix_control>& controls);
-			void			_CollectMixerUnitControls(
+			size_t			_CollectMixerUnitControls(
 								const uint32 controlIds[kChannels][kChannels],
 								size_t inLeft, size_t outLeft,
 								size_t inRight, size_t outRight,
 								const char* inputName, const char* name,
 								Vector<multi_mix_control>& Controls);
 			bool			_InitGainLimits(multi_mix_control& Control);
-//			void			_InitMixLimits(multi_mix_control& Control);
 
 			size_t			fInterface;
 			status_t		fStatus;
@@ -342,16 +345,6 @@ protected:
 			AudioControlsMap	fOutputTerminals;
 			// map to store output terminal and lookup them by control ID
 			AudioControlsMap	fInputTerminals;
-	
-			struct _MixPageCollector : public Vector<multi_mix_control> {
-				_MixPageCollector(const char* pageName) {
-					multi_mix_control page;
-					memset(&page, 0, sizeof(multi_mix_control));
-					page.flags = B_MULTI_MIX_GROUP;
-					strlcpy(page.name, pageName, sizeof(page.name));
-					PushBack(page);
-				}
-			};
 };
 
 
