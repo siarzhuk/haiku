@@ -1224,10 +1224,10 @@ UHCI::SubmitIsochronous(Transfer *transfer)
 		return B_ERROR;
 		}
 	}
-
+#if 0
 	if (isochronousData->starting_frame_number)
 		*isochronousData->starting_frame_number = currentFrame;
-
+#endif
 	// Add transfer to the list
 	status_t result = AddPendingIsochronousTransfer(transfer, isoRequest,
 		directionIn);
@@ -1258,6 +1258,9 @@ UHCI::SubmitIsochronous(Transfer *transfer)
 		fFrameBandwidth[currentFrame] -= bandwidth;
 		currentFrame = (currentFrame + 1) % NUMBER_OF_FRAMES;
 	}
+
+	if (isochronousData->starting_frame_number)
+		*isochronousData->starting_frame_number = currentFrame;
 
 	// Wake up the isochronous finisher thread
 	release_sem_etc(fFinishIsochronousTransfersSem, 1, B_DO_NOT_RESCHEDULE);
