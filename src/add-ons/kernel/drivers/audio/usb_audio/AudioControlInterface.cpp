@@ -381,7 +381,7 @@ MixerUnit::MixerUnit(AudioControlInterface*	interface,
 		mixerControlsSize = Mixer->length - 10 - Mixer->num_input_pins;
 		fStringIndex = *(mixerControlsData + mixerControlsSize);
 
-#if 0 // TEST
+#if 1 // TEST
 		if (fOutChannelsNumber > 2) {
 		//	fOutChannelsNumber = 2;
 		//	fChannelsConfig = 0x03;
@@ -463,8 +463,8 @@ MixerUnit::IsControlProgrammable(int inChannel, int outChannel)
 		result = (fControlsBitmap[index >> 3] & (0x80 >> (index & 7))) != 0;
 	}
 
-	TRACE(UAC, "in:%d out:%d is %s\n",
-		inChannel, outChannel, result ? "on" : "off");
+//	TRACE(UAC, "in:%d out:%d is %s\n",
+//		inChannel, outChannel, result ? "on" : "off");
 	return result;
 }
 
@@ -1511,8 +1511,8 @@ AudioControlInterface::_CollectMixerUnitControls(
 	uint32 leftId = controlIds[inLeft][outLeft];
 	uint32 rightId = controlIds[inRight][outRight];
 
-	TRACE(UAC, "left:%d %d: %08x; right:%d %d: %08x\n",
-			inLeft, outLeft, leftId, inRight, outRight, rightId);
+//	TRACE(UAC, "left:%d %d: %08x; right:%d %d: %08x\n",
+//			inLeft, outLeft, leftId, inRight, outRight, rightId);
 
 	multi_mix_control control;
 	memset(&control, 0, sizeof(multi_mix_control));
@@ -1635,6 +1635,10 @@ AudioControlInterface::_ListMixControlsForMixerUnit(int32& index,
 	_MixPageCollector* genericPage = new _MixPageCollector("Mixer"); 
 	mixControls.PushBack(genericPage);
 	
+	// page for extended in (>2) and out (>2) mixer controls
+	size_t controlsOnExMixerPage = 0; 
+	_MixPageCollector* exMixerPage = new _MixPageCollector("Mixer"); 
+	
 	AudioChannelCluster* outCluster = mixer->OutCluster();
 
 	int inOffset = 0;
@@ -1720,8 +1724,6 @@ AudioControlInterface::_ListMixControlsForMixerUnit(int32& index,
 
 		// make separate mixer pages for set of extended (>2) input
 		// channels connected to extended (>2 channels) output
-		size_t controlsOnPage = 0; 
-		_MixPageCollector* mixerPage = new _MixPageCollector("Mixer"); 
 		for (size_t in = 0; in < _countof(channelPairs); in++) {
 			for (size_t out = 0; out < _countof(channelPairs); out++) {
 				char outName[sizeof(Info->controls->name)] = { 0 };
@@ -1731,24 +1733,24 @@ AudioControlInterface::_ListMixControlsForMixerUnit(int32& index,
 					snprintf(outName, sizeof(outName), "%s to %s", 
 						channelPairs[in].name, channelPairs[out].name);
 				
-				controlsOnPage += _CollectMixerUnitControls(controlIds,
+				controlsOnExMixerPage += _CollectMixerUnitControls(controlIds,
 					channelPairs[in].inLeft, channelPairs[out].inLeft,
 					channelPairs[in].inRight, channelPairs[out].inRight,
-					control->Name(), outName, *mixerPage);
+					control->Name(), outName, *exMixerPage);
 			}
 
-			if (controlsOnPage >= 6) {
-				mixControls.PushBack(mixerPage);
-				mixerPage = new _MixPageCollector("Mixer");
-				controlsOnPage = 0;
+			if (controlsOnExMixerPage >= 6) {
+				mixControls.PushBack(exMixerPage);
+				exMixerPage = new _MixPageCollector("Mixer");
+				controlsOnExMixerPage = 0;
 			}
 		}
-
-		if (mixerPage->Count() > 1)
-			mixControls.PushBack(mixerPage);
-		else
-			delete mixerPage;
 	}
+
+	if (exMixerPage->Count() > 1)
+		mixControls.PushBack(exMixerPage);
+	else
+		delete exMixerPage;
 	
 	// final step - fill multiaudio controls info with
 	// already structured pages/controls info arrays
@@ -1896,8 +1898,9 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 				length = 2;
 				break;
 			default:
-				// TODO
-				break;
+				TRACE(ERR, "Control type %d is not suported\n",
+					control->SubType());
+				continue;
 		}
 
 		size_t actualLength = 0;
@@ -2030,8 +2033,9 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 					Info->values[i].gain);
 				break;
 			default:
-				// TODO
-				break;
+				TRACE(ERR, "Control type %d is not suported\n",
+					control->SubType());
+				continue;
 		}
 
 		size_t actualLength = 0;
