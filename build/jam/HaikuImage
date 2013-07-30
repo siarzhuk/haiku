@@ -230,7 +230,7 @@ if $(HAIKU_ATA_STACK) = 1 {
 AddFilesToHaikuImage system add-ons kernel busses scsi
 	: ahci ;
 AddFilesToHaikuImage system add-ons kernel busses usb
-	: <usb>ohci ;
+	: <usb>uhci <usb>ohci ;
 #	: <usb>uhci <usb>ohci <usb>ehci ;
 AddFilesToHaikuImage system add-ons kernel busses virtio
 	: virtio_pci ;
@@ -612,7 +612,7 @@ AddBootModuleSymlinksToHaikuImage
 	ahci generic_ide_pci it8211 legacy_sata silicon_image_3112
 	ide_isa@x86
 #	<usb>uhci <usb>ohci <usb>ehci
-	<usb>ohci 
+	<usb>uhci <usb>ohci 
 	scsi_cd scsi_disk usb_disk
 	virtio virtio_pci virtio_block	
 	efi_gpt
