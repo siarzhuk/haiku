@@ -1026,7 +1026,9 @@ OHCI::_FinishTransfers()
 			MutexLocker endpointLocker(endpoint->lock);
 
 			if ((endpoint->head_physical_descriptor & OHCI_ENDPOINT_HEAD_MASK)
-					!= endpoint->tail_physical_descriptor) {
+					!= endpoint->tail_physical_descriptor
+						&& (endpoint->head_physical_descriptor
+							& OHCI_ENDPOINT_HALTED) == 0) {
 				// there are still active transfers on this endpoint, we need
 				// to wait for all of them to complete, otherwise we'd read
 				// a potentially bogus data toggle value below
