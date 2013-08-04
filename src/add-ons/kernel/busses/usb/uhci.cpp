@@ -1087,11 +1087,23 @@ UHCI::SubmitIsochronous(Transfer *transfer)
 	Pipe *pipe = transfer->TransferPipe();
 	bool directionIn = (pipe->Direction() == Pipe::In);
 	usb_isochronous_data *isochronousData = transfer->IsochronousData();
-	size_t packetSize = transfer->DataLength();
-	size_t restSize = packetSize % isochronousData->packet_count;
-	packetSize /= isochronousData->packet_count;
-	uint16 currentFrame;
+//	size_t packetSize = transfer->DataLength();
+//	size_t restSize = packetSize % isochronousData->packet_count;
+//	packetSize /= isochronousData->packet_count;
+//	uint16 currentFrame;
 
+	size_t dataLength = transfer->VectorLength();
+	size_t packet_count = isochronousData->packet_count;
+
+	if (packet_count == 0) {
+		TRACE_ERROR("isochronous packet_count should not be equal to zero.");
+		return B_BAD_VALUE;
+	}
+
+	size_t packetSize = dataLength / packet_count;
+	if (dataLength % packet_count != 0)
+		packetSize++;
+	
 	if (packetSize > pipe->MaxPacketSize()) {
 		TRACE_ERROR("isochronous packetSize is bigger than pipe MaxPacketSize\n");
 		return B_BAD_VALUE;
@@ -1099,8 +1111,12 @@ UHCI::SubmitIsochronous(Transfer *transfer)
 
 	// Ignore the fact that the last descriptor might need less bandwidth.
 	// The overhead is not worthy.
-	uint16 bandwidth = transfer->Bandwidth() / isochronousData->packet_count;
+//	uint16 bandwidth = transfer->Bandwidth() / isochronousData->packet_count;
 
+	uint16 bandwidth = transfer->Bandwidth() / packet_count;
+	if (transfer->Bandwidth() % packet_count != 0)
+		bandwidth++;
+	
 	TRACE("isochronous transfer descriptor bandwidth %d\n", bandwidth);
 
 	// The following holds the list of transfer descriptor of the
@@ -1108,13 +1124,30 @@ UHCI::SubmitIsochronous(Transfer *transfer)
 	// descriptors from the frame list, as descriptors are not link to each
 	// other in a queue like for every other transfer.
 	uhci_td **isoRequest
-		= new(std::nothrow) uhci_td *[isochronousData->packet_count];
+		= new(std::nothrow) uhci_td *[/*isochronousData->*/packet_count];
 	if (isoRequest == NULL) {
 		TRACE("failed to create isoRequest array!\n");
 		return B_NO_MEMORY;
 	}
 
+
 	// Create the list of transfer descriptors
+	for (uint32 i = 0; i < (/*isochronousData->*/packet_count /*- 1*/); i++) {
+		isoRequest[i] = CreateDescriptor(pipe,
+			directionIn ? TD_TOKEN_IN : TD_TOKEN_OUT,
+			min_c(packetSize, max_c(dataLength, 0)));
+		// If we ran out of memory, clean up and return
+		if (isoRequest[i] == NULL) {
+			for (uint32 j = 0; j < i; j++)
+				FreeDescriptor(isoRequest[j]);
+			delete [] isoRequest;
+			return B_NO_MEMORY;
+		}
+		// Make sure data toggle is set to zero
+		isoRequest[i]->token &= ~TD_TOKEN_DATA1;
+		dataLength -= packetSize;
+	}
+/*
 	for (uint32 i = 0; i < (isochronousData->packet_count - 1); i++) {
 		isoRequest[i] = CreateDescriptor(pipe,
 			directionIn ? TD_TOKEN_IN : TD_TOKEN_OUT, packetSize);
@@ -1142,7 +1175,7 @@ UHCI::SubmitIsochronous(Transfer *transfer)
 		return B_NO_MEMORY;
 	}
 	isoRequest[isochronousData->packet_count - 1]->token &= ~TD_TOKEN_DATA1;
-
+*/
 	// If direction is out set every descriptor data
 	if (!directionIn) {
 		iovec *vector = transfer->Vector();
@@ -1157,9 +1190,11 @@ UHCI::SubmitIsochronous(Transfer *transfer)
 	}
 
 	TRACE("isochronous submitted size=%ld bytes, TDs=%" B_PRId32 ", "
-		"packetSize=%ld, restSize=%ld\n", transfer->DataLength(),
-		isochronousData->packet_count, packetSize, restSize);
+		//"packetSize=%ld, restSize=%ld\n", transfer->DataLength(),
+		"packetSize=%ld\n", transfer->DataLength(),
+		isochronousData->packet_count, packetSize/*, restSize*/);
 
+	uint16 currentFrame;
 	// Find the entry where to start inserting the first Isochronous descriptor
 	if (isochronousData->flags & USB_ISO_ASAP ||
 		isochronousData->starting_frame_number == NULL) {
@@ -1191,7 +1226,7 @@ UHCI::SubmitIsochronous(Transfer *transfer)
 			for (uint32 i = 0; i < isochronousData->packet_count; i++)
 				FreeDescriptor(isoRequest[i]);
 			delete [] isoRequest;
-		return B_ERROR;
+			return B_ERROR;
 		}
 	}
 #if 0
