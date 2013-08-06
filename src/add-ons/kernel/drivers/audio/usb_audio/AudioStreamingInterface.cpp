@@ -425,14 +425,15 @@ AudioStreamingInterface::AudioStreamingInterface(
 				switch(Header->descriptor_subtype) {
 					case USB_AUDIO_AS_GENERAL:
 						if (ASInterface == 0)
-							ASInterface = new ASInterfaceDescriptor(
+							ASInterface = new(std::nothrow)
+								ASInterfaceDescriptor(
 								(usb_audio_streaming_interface_descriptor*)Header);
 						else
 							TRACE(ERR, "Duplicate AStream interface ignored.\n");
 						break;
 					case USB_AUDIO_AS_FORMAT_TYPE:
 						if (ASFormat == 0)
-							ASFormat = new TypeIFormatDescriptor(
+							ASFormat = new(std::nothrow) TypeIFormatDescriptor(
 								(usb_audio_format_descriptor*) Header);
 						else
 							TRACE(ERR, "Duplicate AStream format ignored.\n");
@@ -449,7 +450,7 @@ AudioStreamingInterface::AudioStreamingInterface(
 				if (ASEndpoint == 0) {
 					usb_endpoint_descriptor* Endpoint
 						= Interface->endpoint[0].descr;
-					ASEndpoint = new ASEndpointDescriptor(Endpoint,
+					ASEndpoint = new(std::nothrow) ASEndpointDescriptor(Endpoint,
 						(usb_audio_streaming_endpoint_descriptor*)Header);
 				} else
 					TRACE(ERR, "Duplicate AStream endpoint ignored.\n");
@@ -460,7 +461,7 @@ AudioStreamingInterface::AudioStreamingInterface(
 				"unknown descriptor type %#04x.\n",	Header->descriptor_type);
 		}
 
-		fAlternates.Add(new AudioStreamAlternate(alt, ASInterface,
+		fAlternates.Add(new(std::nothrow) AudioStreamAlternate(alt, ASInterface,
 			ASEndpoint, ASFormat));
 	}
 }

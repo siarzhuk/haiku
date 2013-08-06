@@ -960,46 +960,46 @@ AudioControlInterface::Init(size_t interface, usb_interface_info* Interface)
 				InitACHeader(interface, Header);
 				break;
 			case USB_AUDIO_AC_INPUT_TERMINAL:
-				control = new InputTerminal(this, Header);
+				control = new(std::nothrow) InputTerminal(this, Header);
 				break;
 			case USB_AUDIO_AC_OUTPUT_TERMINAL:
-				control = new OutputTerminal(this, Header);
+				control = new(std::nothrow) OutputTerminal(this, Header);
 				break;
 			case USB_AUDIO_AC_MIXER_UNIT:
-				control = new MixerUnit(this, Header);
+				control = new(std::nothrow) MixerUnit(this, Header);
 				break;
 			case USB_AUDIO_AC_SELECTOR_UNIT:
-				control = new SelectorUnit(this, Header);
+				control = new(std::nothrow) SelectorUnit(this, Header);
 				break;
 			case USB_AUDIO_AC_FEATURE_UNIT:
-				control = new FeatureUnit(this, Header);
+				control = new(std::nothrow) FeatureUnit(this, Header);
 				break;
 			case USB_AUDIO_AC_PROCESSING_UNIT:
 				if (SpecReleaseNumber() < 200)
-					control = new ProcessingUnit(this, Header);
+					control = new(std::nothrow) ProcessingUnit(this, Header);
 				else
-					control = new EffectUnit(this, Header);
+					control = new(std::nothrow) EffectUnit(this, Header);
 				break;
 			case USB_AUDIO_AC_EXTENSION_UNIT:
 				if (SpecReleaseNumber() < 200)
-					control = new ExtensionUnit(this, Header);
+					control = new(std::nothrow) ExtensionUnit(this, Header);
 				else
-					control = new ProcessingUnit(this, Header);
+					control = new(std::nothrow) ProcessingUnit(this, Header);
 				break;
 			case USB_AUDIO_AC_EXTENSION_UNIT_R2:
-				control = new ExtensionUnit(this, Header);
+				control = new(std::nothrow) ExtensionUnit(this, Header);
 				break;
 			case USB_AUDIO_AC_CLOCK_SOURCE_R2:
-				control = new ClockSource(this, Header);
+				control = new(std::nothrow) ClockSource(this, Header);
 				break;
 			case USB_AUDIO_AC_CLOCK_SELECTOR_R2:
-				control = new ClockSelector(this, Header);
+				control = new(std::nothrow) ClockSelector(this, Header);
 				break;
 			case USB_AUDIO_AC_CLOCK_MULTIPLIER_R2:
-				control = new ClockMultiplier(this, Header);
+				control = new(std::nothrow) ClockMultiplier(this, Header);
 				break;
 			case USB_AUDIO_AC_SAMPLE_RATE_CONVERTER_R2:
-				control = new SampleRateConverter(this, Header);
+				control = new(std::nothrow) SampleRateConverter(this, Header);
 				break;
 		}
 
@@ -1632,12 +1632,12 @@ AudioControlInterface::_ListMixControlsForMixerUnit(int32& index,
 	
 	Vector<_MixPageCollector*> mixControls;
 	
-	_MixPageCollector* genericPage = new _MixPageCollector("Mixer"); 
+	_MixPageCollector* genericPage = new(std::nothrow) _MixPageCollector("Mixer"); 
 	mixControls.PushBack(genericPage);
 	
 	// page for extended in (>2) and out (>2) mixer controls
 	size_t controlsOnExMixerPage = 0; 
-	_MixPageCollector* exMixerPage = new _MixPageCollector("Mixer"); 
+	_MixPageCollector* exMixerPage = new(std::nothrow) _MixPageCollector("Mixer"); 
 	
 	AudioChannelCluster* outCluster = mixer->OutCluster();
 
@@ -1741,7 +1741,7 @@ AudioControlInterface::_ListMixControlsForMixerUnit(int32& index,
 
 			if (controlsOnExMixerPage >= 6) {
 				mixControls.PushBack(exMixerPage);
-				exMixerPage = new _MixPageCollector("Mixer");
+				exMixerPage = new(std::nothrow) _MixPageCollector("Mixer");
 				controlsOnExMixerPage = 0;
 			}
 		}
