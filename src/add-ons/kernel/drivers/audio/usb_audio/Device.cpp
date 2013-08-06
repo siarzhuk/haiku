@@ -619,7 +619,8 @@ Device::_SetupEndpoints()
 				break;
 			case USB_AUDIO_INTERFACE_AUDIOSTREAMING_SUBCLASS:
 				{
-					Stream* stream = new Stream(this, i, &config->interface[i]);
+					Stream* stream = new(std::nothrow) Stream(this, i,
+						&config->interface[i]);
 					if (B_OK == stream->Init()) {
 						// put the stream in the correct order:
 						// first output that input ones.

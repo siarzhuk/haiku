@@ -116,8 +116,8 @@ Stream::_ChooseAlternate()
 	fIsInput = (endpoint->fEndpointAddress & USB_ENDPOINT_ADDR_DIR_IN)
 		== USB_ENDPOINT_ADDR_DIR_IN;
 
-//	if (fIsInput)
-//		fCurrentBuffer = -1;
+	if (fIsInput)
+		fCurrentBuffer = -1;
 
 	TRACE(INF, "Alternate %d EP:%x selected for %s!\n",
 		fActiveAlternate, endpoint->fEndpointAddress,
