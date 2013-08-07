@@ -1308,7 +1308,7 @@ OHCI::_FinishIsochronousTransfer(transfer_data *transfer,
 				size_t vectorCount = transfer->transfer->VectorCount();
 				
 				transfer->transfer->PrepareKernelAccess();
-				/*actualLength =*/ _ReadDescriptorChain(
+				_ReadDescriptorChain(
 					(ohci_isochronous_td*)transfer->data_descriptor,
 					vector, vectorCount);
 			}
@@ -2288,7 +2288,7 @@ OHCI::_ReadDescriptorChain(ohci_general_td *topDescriptor, iovec *vector,
 }
 
 
-size_t
+void
 OHCI::_ReadDescriptorChain(ohci_isochronous_td *topDescriptor, iovec *vector,
 	size_t vectorCount)
 {
@@ -2302,11 +2302,6 @@ OHCI::_ReadDescriptorChain(ohci_isochronous_td *topDescriptor, iovec *vector,
 			!= OHCI_ITD_CONDITION_NOT_ACCESSED) {
 		size_t bufferSize = current->buffer_size;
 		if (current->buffer_logical != NULL && bufferSize > 0) {
-			/*if (current->buffer_physical != 0) {
-				bufferSize -= current->last_byte_address
-					- current->buffer_page_byte_0 + 1;
-			}*/
-
 			while (true) {
 				size_t length = min_c(bufferSize - bufferOffset,
 					vector[vectorIndex].iov_len - vectorOffset);
@@ -2325,7 +2320,7 @@ OHCI::_ReadDescriptorChain(ohci_isochronous_td *topDescriptor, iovec *vector,
 					if (++vectorIndex >= vectorCount) {
 						TRACE("read descriptor chain (%ld bytes, "
 							"no more vectors)\n", actualLength);
-						return actualLength;
+						return;
 					}
 
 					vectorOffset = 0;
@@ -2342,7 +2337,7 @@ OHCI::_ReadDescriptorChain(ohci_isochronous_td *topDescriptor, iovec *vector,
 	}
 
 	TRACE("read descriptor chain (%ld bytes)\n", actualLength);
-	return actualLength;
+	return;
 }
 
 

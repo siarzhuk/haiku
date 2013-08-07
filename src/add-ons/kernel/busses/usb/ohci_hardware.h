@@ -414,13 +414,12 @@ typedef struct {
 #define	OHCI_ITD_SET_CONDITION_CODE(x)			((x) << 28)
 #define	OHCI_ITD_CONDITION_CODE_MASK			0xf0000000
 
-//#define	OHCI_ITD_OFFSET_IDX(x)					((x) / 2 * 2 + ((x) + 1) % 2)
 #define	OHCI_ITD_OFFSET_IDX(x)					(x)
 
 #define OHCI_ITD_INTERRUPT_IMMEDIATE			0x00
 #define OHCI_ITD_INTERRUPT_NONE					0x07
 
-#define OHCI_ITD_CONDITION_NO_ERROR				0x00 //TODO check and optimize?
+#define OHCI_ITD_CONDITION_NO_ERROR				0x00
 #define OHCI_ITD_CONDITION_CRC_ERROR			0x01
 #define OHCI_ITD_CONDITION_BIT_STUFFING			0x02
 #define OHCI_ITD_CONDITION_TOGGLE_MISMATCH		0x03
