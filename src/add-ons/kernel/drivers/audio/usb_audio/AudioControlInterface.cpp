@@ -1886,7 +1886,8 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 						length = 1;
 						break;
 					default:
-						TRACE(ERR, "Unsupported control type %#02x ignored.\n",
+						TRACE(ERR, "Unsupported control id:%08x of type %#02x "
+							"ignored.\n", ID_FROM_CTLID(Info->values[i].id),
 							CS_FROM_CTLID(Info->values[i].id));
 						continue;
 				}
@@ -1898,8 +1899,8 @@ AudioControlInterface::GetMix(multi_mix_value_info* Info)
 				length = 2;
 				break;
 			default:
-				TRACE(ERR, "Control type %d is not suported\n",
-					control->SubType());
+				TRACE(ERR, "Control id:%08x of type %d is not supported\n",
+					 ID_FROM_CTLID(Info->values[i].id), control->SubType());
 				continue;
 		}
 
@@ -2010,7 +2011,8 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 							Info->values[i].enable);
 						break;
 					default:
-						TRACE(ERR, "Unsupported control type %#02x ignored.\n",
+						TRACE(ERR, "Unsupported control id:%08x of type %#02x "
+							"ignored.\n", ID_FROM_CTLID(Info->values[i].id),
 							CS_FROM_CTLID(Info->values[i].id));
 						continue;
 				}
@@ -2033,8 +2035,8 @@ AudioControlInterface::SetMix(multi_mix_value_info* Info)
 					Info->values[i].gain);
 				break;
 			default:
-				TRACE(ERR, "Control type %d is not suported\n",
-					control->SubType());
+				TRACE(ERR, "Control id:%08x of type %d is not supported\n",
+					Info->values[i].id, control->SubType());
 				continue;
 		}
 
