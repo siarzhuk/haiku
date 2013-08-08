@@ -2399,7 +2399,7 @@ OHCI::_CreateIsochronousDescriptor(size_t bufferSize)
 	descriptor->next_logical_descriptor = NULL;
 	descriptor->next_done_descriptor = NULL;
 	descriptor->buffer_size = bufferSize;
-	if (bufferSize == 0) {  //TODO no sence?
+	if (bufferSize == 0) {
 		descriptor->buffer_page_byte_0 = 0;
 		descriptor->buffer_logical = NULL;
 		descriptor->last_byte_address = 0;
@@ -2447,18 +2447,19 @@ OHCI::_AllocateBandwidth(uint16 frame, Pipe *pipe, uint16 size)
 	uint16 bandwidth = MAX_AVAILABLE_BANDWIDTH;
 	BandwidthMap::Iterator i = fBandwidthMap.Find(frame);
 	if (i != fBandwidthMap.End()) {
-		bandwidth_data* data = head = i->Value();
-		while (data && bandwidth > size) {
-			if (data->address == address && data->endpoint == endpoint) {
-				// this endpoint already has bandwidth allocated in this frame
+		head = i->Value();
+		for (bandwidth_data* data = head; data && bandwidth > size;
+				data = data->link) {
+			
+			// has the endpoint already allocated bandwidth in the frame?
+			if (data->address == address && data->endpoint == endpoint)
 				return false;
-			}
 
 			bandwidth -= data->bandwidth;
-			data = data->link;
 		}
 	}
 
+	// no more bandwidth available in the frame?
 	if (bandwidth < size)
 		return false;
 	
@@ -2472,7 +2473,7 @@ OHCI::_AllocateBandwidth(uint16 frame, Pipe *pipe, uint16 size)
 	data->endpoint = endpoint;
 	data->bandwidth = size;
 	data->link = head;
-	fBandwidthMap.Insert(frame, data);
+	fBandwidthMap.Insert(frame, data); 
 
 	return true;
 }
@@ -2495,56 +2496,8 @@ OHCI::_ReleaseBandwidth(uint16 startFrame, uint16 frameCount, Pipe *pipe)
 			continue;
 
 		bandwidth_data* data = i->Value();
-		if (data == NULL) {
-	//		fBandwidthMap.Remove(frame);
-			continue;//goto _exit;//return; // TODO: continue to next frame????
-		}
-
 		bandwidth_data* prev = NULL;
-		for ( ; data; prev = data, data = data->link)
-			if (data->address == address && data->endpoint == endpoint)
-				break;
-		
-		if (data == NULL)
-			continue;//goto _exit; //return; // TODO: continue to next frame????
-
-		if (prev == NULL) {
-			/*if (data->link == NULL)
-				fBandwidthMap.Remove(frame);
-			else*/
-				fBandwidthMap.Insert(frame, data->link);
-		} else
-			prev->link = data->link;
-
-		delete data;
-	}
-
-//_exit:
-	_PurgeBandwidthMap();
-	TRACE("Bandwidth map release for frame %#06x (%d) finish count:%ld\n",
-			startFrame, frameCount, fBandwidthMap.Count());
-}
-
-/*
-void
-OHCI::_ReleaseBandwidth(Pipe *pipe)
-{
-	uint8 address = pipe->DeviceAddress();
-	uint8 endpoint = pipe->EndpointAddress();
-
-	TRACE("Bandwidth map count before cancel release:%ld\n", fBandwidthMap.Count());
-	
-	for (BandwidthMap::Iterator i = fBandwidthMap.Begin();
-		i != fBandwidthMap.End(); i++) {
-
-		uint16 frame = i->Key();
-		bandwidth_data* data = i->Value();
-
-		if (data == NULL)
-			continue;
-
-		bandwidth_data* prev = NULL;
-		for ( ; data; prev = data, data = data->link)
+		for ( ; data != NULL; prev = data, data = data->link)
 			if (data->address == address && data->endpoint == endpoint)
 				break;
 		
@@ -2559,12 +2512,11 @@ OHCI::_ReleaseBandwidth(Pipe *pipe)
 		delete data;
 	}
 
-//#ifdef USB_TRACE	
 	_PurgeBandwidthMap();
-	TRACE("Bandwidth map count after cancel release:%ld\n", fBandwidthMap.Count());
-//#endif
+	TRACE("Bandwidth map release for frame %#06x (%d) finish count:%ld\n",
+			startFrame, frameCount, fBandwidthMap.Count());
 }
-*/
+
 
 void
 OHCI::_PurgeBandwidthMap()
