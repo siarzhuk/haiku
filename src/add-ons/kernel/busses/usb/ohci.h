@@ -123,7 +123,7 @@ static	int32						_FinishThread(void *data);
 		// Transfer descriptor related methods
 		ohci_general_td *			_CreateGeneralDescriptor(
 										size_t bufferSize);
-		void						_FreeDescriptor( // TODO templatize?
+		void						_FreeDescriptor(
 										ohci_general_td *descriptor);
 
 		status_t					_CreateDescriptorChain(
@@ -133,7 +133,7 @@ static	int32						_FinishThread(void *data);
 										size_t bufferSize);
 		void						_FreeDescriptorChain(
 										ohci_general_td *topDescriptor);
-		
+
 		void						_FreeIsochronousDescriptorChain(
 										ohci_isochronous_td *topDescriptor);
 
@@ -174,7 +174,6 @@ static	int32						_FinishThread(void *data);
 										uint16 size);
 		void						_ReleaseBandwidth(uint16 startFrame, uint16 count,
 										Pipe *pipe);
-//		void						_ReleaseBandwidth(Pipe *pipe);
 		void						_ReleaseBandwidthMap();
 		void						_PurgeBandwidthMap();
 		// Private locking
