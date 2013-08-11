@@ -1572,15 +1572,12 @@ OHCI::_CreateIsochronousDescriptorChain(ohci_isochronous_td **_firstDescriptor,
 	// real frame number may differ in case provided one has not bandwidth
 	if (isochronousData->flags & USB_ISO_ASAP ||
 		isochronousData->starting_frame_number == NULL)
-	{
 		// We should stay about 5-10 ms ahead of the controller
 		// USB1 frame is equal to 1 ms
 		currentFrame += safeFrames;
-
-	} else
+	else
 		currentFrame = *isochronousData->starting_frame_number;
 
-// TODO zero length of data is also valid case !!!
 	uint16 packets = packet_count;
 	uint16 frameOffset = 0;
 	while (packets > 0) {
@@ -1593,7 +1590,11 @@ OHCI::_CreateIsochronousDescriptorChain(ohci_isochronous_td **_firstDescriptor,
 
 		if (frameCount == 0) {
 			// starting frame has no bandwidth for our transaction - try next
-			frameOffset++; // TODO roundup???
+			if (++frameOffset >= 0xFFFF) {
+				TRACE_ERROR("failed to allocate bandwidth\n");
+				_FreeIsochronousDescriptorChain(firstDescriptor);
+				return B_NO_MEMORY;
+			}
 			continue;
 		}
 
