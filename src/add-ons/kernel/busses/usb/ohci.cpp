@@ -77,6 +77,9 @@ OHCI::OHCI(pci_info *info, Stack *stack)
 		fFinishThread(-1),
 		fStopFinishThread(false),
 		fProcessingPipe(NULL),
+#if 1
+		fFrameBandwidth(NULL),
+#endif
 		fRootHub(NULL),
 		fRootHubAddress(0),
 		fPortCount(0)
@@ -312,7 +315,13 @@ OHCI::OHCI(pci_info *info, Stack *stack)
 		numberOfPorts = OHCI_MAX_PORT_COUNT;
 	fPortCount = numberOfPorts;
 	TRACE("port count is %d\n", fPortCount);
+#if 1
+	// Create the array that will keep bandwidth information
+	fFrameBandwidth = new(std::nothrow) uint16[NUMBER_OF_FRAMES];
 
+	for (int32 i = 0; i < NUMBER_OF_FRAMES; i++)
+		fFrameBandwidth[i] = MAX_AVAILABLE_BANDWIDTH;
+#endif
 	// Create semaphore the finisher thread will wait for
 	fFinishTransfersSem = create_sem(0, "OHCI Finish Transfers");
 	if (fFinishTransfersSem < B_OK) {
@@ -378,7 +387,9 @@ OHCI::~OHCI()
 	}
 
 	_ReleaseBandwidthMap();
-
+#if 1 
+	delete [] fFrameBandwidth;
+#endif
 	delete [] fInterruptEndpoints;
 	delete fRootHub;
 
@@ -479,17 +490,18 @@ OHCI::CancelQueuedTransfers(Pipe *pipe, bool force)
 					ohci_isochronous_td *descriptor
 						= (ohci_isochronous_td *)current->first_descriptor;
 					while (descriptor) {
-						uint16 frame = OHCI_ITD_GET_STARTING_FRAME(descriptor->flags);
+						uint16 frame = OHCI_ITD_GET_STARTING_FRAME(
+							descriptor->flags);
 						_ReleaseBandwidth(frame,
 							OHCI_ITD_GET_FRAME_COUNT(descriptor->flags), pipe);
 						if (descriptor
-								== (ohci_isochronous_td*)current->last_descriptor) {
+								== (ohci_isochronous_td*)current->last_descriptor)
 							// this is the last ITD of the transfer
 							break;
-						}
 
 						descriptor
-							= (ohci_isochronous_td *)descriptor->next_done_descriptor;
+							= (ohci_isochronous_td *)
+							descriptor->next_done_descriptor;
 					}
 				}
 
@@ -521,9 +533,6 @@ OHCI::CancelQueuedTransfers(Pipe *pipe, bool force)
 		free(list);
 		list = next;
 	}
-
-/*	if (pipe->Type() & USB_OBJECT_ISO_PIPE)
-		_ReleaseBandwidth(pipe); */
 
 	// wait for any transfers that might have made it before canceling
 	while (fProcessingPipe == pipe)
@@ -1352,7 +1361,7 @@ OHCI::_SubmitRequest(Transfer *transfer)
 	ohci_general_td *statusDescriptor = _CreateGeneralDescriptor(0);
 	if (!statusDescriptor) {
 		TRACE_ERROR("failed to allocate status descriptor\n");
-		_FreeDescriptor(setupDescriptor);
+		_FreeGeneralDescriptor(setupDescriptor);
 		return B_NO_MEMORY;
 	}
 
@@ -1375,8 +1384,8 @@ OHCI::_SubmitRequest(Transfer *transfer)
 			directionIn ? OHCI_TD_DIRECTION_PID_IN : OHCI_TD_DIRECTION_PID_OUT,
 			transfer->VectorLength());
 		if (result < B_OK) {
-			_FreeDescriptor(setupDescriptor);
-			_FreeDescriptor(statusDescriptor);
+			_FreeGeneralDescriptor(setupDescriptor);
+			_FreeGeneralDescriptor(statusDescriptor);
 			return result;
 		}
 
@@ -1649,8 +1658,9 @@ OHCI::_CreateIsochronousDescriptorChain(ohci_isochronous_td **_firstDescriptor,
 		isochronousData->packet_count, packetSize, currentFrame);
 
 	TRACE("Current Frame Number:%" B_PRIx32 "\n", fHcca->current_frame_number);
+#if 0
 	TRACE("Bandwidth map count:%ld\n", fBandwidthMap.Count());
-
+#endif
 	return B_OK;
 }
 
@@ -1921,7 +1931,7 @@ OHCI::_InsertEndpointForPipe(Pipe *pipe)
 
 	if (!_LockEndpoints()) {
 		if (endpoint->tail_logical_descriptor) {
-			_FreeDescriptor(
+			_FreeGeneralDescriptor(
 				(ohci_general_td *)endpoint->tail_logical_descriptor);
 		}
 
@@ -2013,7 +2023,7 @@ OHCI::_CreateGeneralDescriptor(size_t bufferSize)
 
 
 void
-OHCI::_FreeDescriptor(ohci_general_td *descriptor)
+OHCI::_FreeGeneralDescriptor(ohci_general_td *descriptor)
 {
 	if (!descriptor)
 		return;
@@ -2078,7 +2088,7 @@ OHCI::_FreeDescriptorChain(ohci_general_td *topDescriptor)
 
 	while (current) {
 		next = (ohci_general_td *)current->next_logical_descriptor;
-		_FreeDescriptor(current);
+		_FreeGeneralDescriptor(current);
 		current = next;
 	}
 }
@@ -2419,6 +2429,17 @@ OHCI::_FreeIsochronousDescriptor(ohci_isochronous_td *descriptor)
 bool
 OHCI::_AllocateBandwidth(uint16 frame, Pipe *pipe, uint16 size)
 {
+	return true;
+#if 1	
+	frame %= NUMBER_OF_FRAMES;
+	if (size > fFrameBandwidth[frame])
+		return false;
+
+	fFrameBandwidth[frame]-= size; 
+
+	TRACE_ALWAYS("Allocate bandwidth %d for frame %#06x\n", size, frame);
+
+#else
 	uint8 address = pipe->DeviceAddress();
 	uint8 endpoint = pipe->EndpointAddress();
 
@@ -2453,7 +2474,7 @@ OHCI::_AllocateBandwidth(uint16 frame, Pipe *pipe, uint16 size)
 	data->bandwidth = size;
 	data->link = head;
 	fBandwidthMap.Insert(frame, data);
-
+#endif
 	return true;
 }
 
@@ -2461,6 +2482,19 @@ OHCI::_AllocateBandwidth(uint16 frame, Pipe *pipe, uint16 size)
 void
 OHCI::_ReleaseBandwidth(uint16 startFrame, uint16 frameCount, Pipe *pipe)
 {
+	return;
+#if 1
+	for (size_t index = 0; index < frameCount; index++) {
+		uint16 frame = (startFrame + index) % NUMBER_OF_FRAMES;
+		fFrameBandwidth[frame] = MAX_AVAILABLE_BANDWIDTH; 
+	}
+
+	int32 bandwidth = NUMBER_OF_FRAMES * MAX_AVAILABLE_BANDWIDTH;
+	for (size_t i = 0; i < NUMBER_OF_FRAMES; i++)
+		bandwidth -= fFrameBandwidth[i];
+	TRACE_ALWAYS("Bandwidth release for frame %#06x (%d) finish amount:%ld\n",
+			startFrame, frameCount, bandwidth);
+#else
 	uint8 address = pipe->DeviceAddress();
 	uint8 endpoint = pipe->EndpointAddress();
 
@@ -2494,12 +2528,14 @@ OHCI::_ReleaseBandwidth(uint16 startFrame, uint16 frameCount, Pipe *pipe)
 	_PurgeBandwidthMap();
 	TRACE("Bandwidth map release for frame %#06x (%d) finish count:%ld\n",
 			startFrame, frameCount, fBandwidthMap.Count());
+#endif
 }
 
 
 void
 OHCI::_PurgeBandwidthMap()
 {
+#if 0
 	BandwidthMap::Iterator i = fBandwidthMap.Begin();
 	while (i != fBandwidthMap.End()) {
 		uint16 frame = i->Key();
@@ -2511,12 +2547,14 @@ OHCI::_PurgeBandwidthMap()
 		} else
 			i++;
 	}
+#endif
 }
 
 
 void
 OHCI::_ReleaseBandwidthMap()
 {
+#if 0
 	BandwidthMap::Iterator i = fBandwidthMap.Begin();
 	for ( ; i != fBandwidthMap.End(); i++) {
 		bandwidth_data* data = i->Value();
@@ -2528,6 +2566,7 @@ OHCI::_ReleaseBandwidthMap()
 	}
 
 	fBandwidthMap.MakeEmpty();
+#endif
 }
 
 

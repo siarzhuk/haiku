@@ -31,7 +31,7 @@ typedef struct transfer_data {
 	bool						canceled;
 	transfer_data *				link;
 } transfer_data;
-
+#if 0
 typedef struct bandwidth_data {
 	uint8						address;
 	uint8						endpoint;
@@ -40,7 +40,7 @@ typedef struct bandwidth_data {
 } bandwidth_data;
 
 typedef	VectorMap<uint16, bandwidth_data*> BandwidthMap;
-
+#endif
 
 class OHCI : public BusManager {
 public:
@@ -123,7 +123,7 @@ static	int32						_FinishThread(void *data);
 		// Transfer descriptor related methods
 		ohci_general_td *			_CreateGeneralDescriptor(
 										size_t bufferSize);
-		void						_FreeDescriptor(
+		void						_FreeGeneralDescriptor(
 										ohci_general_td *descriptor);
 
 		status_t					_CreateDescriptorChain(
@@ -219,9 +219,13 @@ static	pci_x86_module_info *		sPCIx86Module;
 		thread_id					fFinishThread;
 		bool						fStopFinishThread;
 		Pipe *						fProcessingPipe;
-
+#if 0
 		BandwidthMap				fBandwidthMap;
-
+#else
+		// fFrameBandwidth[n] holds the available bandwidth
+		// of the nth frame in microseconds
+		uint16 *					fFrameBandwidth;
+#endif
 		// Root Hub
 		OHCIRootHub *				fRootHub;
 		uint8						fRootHubAddress;
