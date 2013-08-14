@@ -1625,9 +1625,6 @@ OHCI::_CreateIsochronousDescriptorChain(ohci_isochronous_td **_firstDescriptor,
 			descriptor->last_byte_address
 				+= dataLength - packetSize * (packet_count);
 
-		if (packets == packet_count && isochronousData->starting_frame_number)
-			*isochronousData->starting_frame_number = currentFrame + frameOffset;
-
 		// link to previous
 		if (lastDescriptor)
 			_LinkDescriptors(lastDescriptor, descriptor, descriptor);
@@ -1639,6 +1636,9 @@ OHCI::_CreateIsochronousDescriptorChain(ohci_isochronous_td **_firstDescriptor,
 		packets -= frameCount;
 
 		frameOffset += frameCount;
+
+		if (packets == 0 && isochronousData->starting_frame_number)
+			*isochronousData->starting_frame_number = currentFrame + frameOffset;
 	}
 
 	*_firstDescriptor = firstDescriptor;
