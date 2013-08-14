@@ -77,9 +77,7 @@ OHCI::OHCI(pci_info *info, Stack *stack)
 		fFinishThread(-1),
 		fStopFinishThread(false),
 		fProcessingPipe(NULL),
-#if 1
 		fFrameBandwidth(NULL),
-#endif
 		fRootHub(NULL),
 		fRootHubAddress(0),
 		fPortCount(0)
@@ -315,13 +313,13 @@ OHCI::OHCI(pci_info *info, Stack *stack)
 		numberOfPorts = OHCI_MAX_PORT_COUNT;
 	fPortCount = numberOfPorts;
 	TRACE("port count is %d\n", fPortCount);
-#if 1
+
 	// Create the array that will keep bandwidth information
 	fFrameBandwidth = new(std::nothrow) uint16[NUMBER_OF_FRAMES];
 
 	for (int32 i = 0; i < NUMBER_OF_FRAMES; i++)
 		fFrameBandwidth[i] = MAX_AVAILABLE_BANDWIDTH;
-#endif
+
 	// Create semaphore the finisher thread will wait for
 	fFinishTransfersSem = create_sem(0, "OHCI Finish Transfers");
 	if (fFinishTransfersSem < B_OK) {
@@ -386,10 +384,7 @@ OHCI::~OHCI()
 			_FreeEndpoint(fInterruptEndpoints[i]);
 	}
 
-	_ReleaseBandwidthMap();
-#if 1 
 	delete [] fFrameBandwidth;
-#endif
 	delete [] fInterruptEndpoints;
 	delete fRootHub;
 
@@ -1329,13 +1324,7 @@ OHCI::_FinishIsochronousTransfer(transfer_data *transfer,
 
 	_FreeIsochronousDescriptorChain(
 		(ohci_isochronous_td*)transfer->first_descriptor);
-#if 0
-	TRACE("Bandwidth map count on finish end:%ld\n", fBandwidthMap.Count());
-	BandwidthMap::Iterator i = fBandwidthMap.Begin();
-	for ( ; i != fBandwidthMap.End(); i++) {
-		TRACE("%d\n", i->Key());
-	}
-#endif
+
 	return true;
 }
 
@@ -1658,9 +1647,7 @@ OHCI::_CreateIsochronousDescriptorChain(ohci_isochronous_td **_firstDescriptor,
 		isochronousData->packet_count, packetSize, currentFrame);
 
 	TRACE("Current Frame Number:%" B_PRIx32 "\n", fHcca->current_frame_number);
-#if 0
-	TRACE("Bandwidth map count:%ld\n", fBandwidthMap.Count());
-#endif
+	
 	return B_OK;
 }
 
@@ -2429,52 +2416,11 @@ OHCI::_FreeIsochronousDescriptor(ohci_isochronous_td *descriptor)
 bool
 OHCI::_AllocateBandwidth(uint16 frame, Pipe *pipe, uint16 size)
 {
-	return true;
-#if 1	
 	frame %= NUMBER_OF_FRAMES;
 	if (size > fFrameBandwidth[frame])
 		return false;
 
 	fFrameBandwidth[frame]-= size; 
-
-	TRACE_ALWAYS("Allocate bandwidth %d for frame %#06x\n", size, frame);
-
-#else
-	uint8 address = pipe->DeviceAddress();
-	uint8 endpoint = pipe->EndpointAddress();
-
-	bandwidth_data* head = NULL;
-	uint16 bandwidth = MAX_AVAILABLE_BANDWIDTH;
-	BandwidthMap::Iterator i = fBandwidthMap.Find(frame);
-	if (i != fBandwidthMap.End()) {
-		head = i->Value();
-		for (bandwidth_data* data = head; data && bandwidth > size;
-				data = data->link) {
-
-			// has the endpoint already allocated bandwidth in the frame?
-			if (data->address == address && data->endpoint == endpoint)
-				return false;
-
-			bandwidth -= data->bandwidth;
-		}
-	}
-
-	// no more bandwidth available in the frame?
-	if (bandwidth < size)
-		return false;
-
-	bandwidth_data* data = new(std::nothrow) bandwidth_data;
-	if (!data) {
-		TRACE_ALWAYS("bandwidth data struct allocation failed.\n");
-		return false;
-	}
-
-	data->address = address;
-	data->endpoint = endpoint;
-	data->bandwidth = size;
-	data->link = head;
-	fBandwidthMap.Insert(frame, data);
-#endif
 	return true;
 }
 
@@ -2482,91 +2428,10 @@ OHCI::_AllocateBandwidth(uint16 frame, Pipe *pipe, uint16 size)
 void
 OHCI::_ReleaseBandwidth(uint16 startFrame, uint16 frameCount, Pipe *pipe)
 {
-	return;
-#if 1
 	for (size_t index = 0; index < frameCount; index++) {
 		uint16 frame = (startFrame + index) % NUMBER_OF_FRAMES;
 		fFrameBandwidth[frame] = MAX_AVAILABLE_BANDWIDTH; 
 	}
-
-	int32 bandwidth = NUMBER_OF_FRAMES * MAX_AVAILABLE_BANDWIDTH;
-	for (size_t i = 0; i < NUMBER_OF_FRAMES; i++)
-		bandwidth -= fFrameBandwidth[i];
-	TRACE_ALWAYS("Bandwidth release for frame %#06x (%d) finish amount:%ld\n",
-			startFrame, frameCount, bandwidth);
-#else
-	uint8 address = pipe->DeviceAddress();
-	uint8 endpoint = pipe->EndpointAddress();
-
-	TRACE("Bandwidth map release for frame %#06x (%d) start count:%ld\n",
-			startFrame, frameCount, fBandwidthMap.Count());
-
-	for (size_t index = 0; index < frameCount; index++) {
-		uint16 frame = startFrame + index;
-		BandwidthMap::Iterator i = fBandwidthMap.Find(frame);
-		// nothing to release?
-		if (i == fBandwidthMap.End())
-			continue;
-
-		bandwidth_data* data = i->Value();
-		bandwidth_data* prev = NULL;
-		for ( ; data != NULL; prev = data, data = data->link)
-			if (data->address == address && data->endpoint == endpoint)
-				break;
-
-		if (data == NULL)
-			continue;
-
-		if (prev == NULL)
-			fBandwidthMap.Insert(frame, data->link);
-		else
-			prev->link = data->link;
-
-		delete data;
-	}
-
-	_PurgeBandwidthMap();
-	TRACE("Bandwidth map release for frame %#06x (%d) finish count:%ld\n",
-			startFrame, frameCount, fBandwidthMap.Count());
-#endif
-}
-
-
-void
-OHCI::_PurgeBandwidthMap()
-{
-#if 0
-	BandwidthMap::Iterator i = fBandwidthMap.Begin();
-	while (i != fBandwidthMap.End()) {
-		uint16 frame = i->Key();
-		bandwidth_data* data = i->Value();
-
-		if (data == NULL) {
-			fBandwidthMap.Remove(frame);
-			i = fBandwidthMap.Begin();
-		} else
-			i++;
-	}
-#endif
-}
-
-
-void
-OHCI::_ReleaseBandwidthMap()
-{
-#if 0
-	BandwidthMap::Iterator i = fBandwidthMap.Begin();
-	for ( ; i != fBandwidthMap.End(); i++) {
-		bandwidth_data* data = i->Value();
-		while (data != NULL) {
-			bandwidth_data* current = data;
-			data = data->link;
-			delete current;
-		}
-	}
-
-	fBandwidthMap.MakeEmpty();
-#endif
 }
 
 
