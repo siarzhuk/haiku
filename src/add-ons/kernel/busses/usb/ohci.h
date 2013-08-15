@@ -14,7 +14,6 @@
 #include "usb_private.h"
 #include "ohci_hardware.h"
 #include <lock.h>
-#include <util/VectorMap.h>
 
 struct pci_info;
 struct pci_module_info;
@@ -31,6 +30,7 @@ typedef struct transfer_data {
 	bool						canceled;
 	transfer_data *				link;
 } transfer_data;
+
 
 class OHCI : public BusManager {
 public:

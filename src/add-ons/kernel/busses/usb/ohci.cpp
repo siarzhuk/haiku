@@ -513,8 +513,6 @@ OHCI::CancelQueuedTransfers(Pipe *pipe, bool force)
 				}
 			}
 			current->canceled = true;
-
-			TRACE_ALWAYS("#### Cancelling:%p\n", current);
 		}
 		current = current->link;
 	}
@@ -703,8 +701,8 @@ OHCI::GetPortStatus(uint8 index, usb_port_status *status)
 	if (portStatus & OHCI_RH_PORTSTATUS_PRSC)
 		status->change |= PORT_STATUS_RESET;
 
-//	TRACE("port %u status 0x%04x change 0x%04x\n", index,
-//		status->status, status->change);
+	TRACE("port %u status 0x%04x change 0x%04x\n", index,
+		status->status, status->change);
 	return B_OK;
 }
 

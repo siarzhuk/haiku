@@ -139,7 +139,7 @@ OHCIRootHub::ProcessTransfer(OHCI *ohci, Transfer *transfer)
 		return B_ERROR;
 
 	usb_request_data *request = transfer->RequestData();
-//	TRACE_MODULE("request: %d\n", request->Request);
+	TRACE_MODULE("request: %d\n", request->Request);
 
 	status_t status = B_TIMED_OUT;
 	size_t actualLength = 0;
