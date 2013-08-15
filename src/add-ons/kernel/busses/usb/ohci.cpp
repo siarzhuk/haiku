@@ -16,8 +16,6 @@
 #include <KernelExport.h>
 #include <util/AutoLock.h>
 
-// TODO: 64 bits compatibility
-
 #include "ohci.h"
 
 #define USB_MODULE_NAME "ohci"
