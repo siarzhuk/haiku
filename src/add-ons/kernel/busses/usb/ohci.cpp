@@ -2513,7 +2513,7 @@ OHCI::_ReadReg(uint32 reg)
 void
 OHCI::_PrintEndpoint(ohci_endpoint_descriptor *endpoint)
 {
-	TRACE_ALWAYS("endpoint %p\n", endpoint);
+	dprintf("endpoint %p\n", endpoint);
 	dprintf("\tflags........... 0x%08" B_PRIx32 "\n", endpoint->flags);
 	dprintf("\ttail_physical... 0x%08" B_PRIx32 "\n", endpoint->tail_physical_descriptor);
 	dprintf("\thead_physical... 0x%08" B_PRIx32 "\n", endpoint->head_physical_descriptor);
@@ -2528,7 +2528,7 @@ void
 OHCI::_PrintDescriptorChain(ohci_general_td *topDescriptor)
 {
 	while (topDescriptor) {
-		TRACE_ALWAYS("descriptor %p\n", topDescriptor);
+		dprintf("descriptor %p\n", topDescriptor);
 		dprintf("\tflags........... 0x%08" B_PRIx32 "\n", topDescriptor->flags);
 		dprintf("\tbuffer_physical. 0x%08" B_PRIx32 "\n", topDescriptor->buffer_physical);
 		dprintf("\tnext_physical... 0x%08" B_PRIx32 "\n", topDescriptor->next_physical_descriptor);
@@ -2547,7 +2547,7 @@ void
 OHCI::_PrintDescriptorChain(ohci_isochronous_td *topDescriptor)
 {
 	while (topDescriptor) {
-		TRACE_ALWAYS("descriptor %p\n", topDescriptor);
+		dprintf("iso.descriptor %p\n", topDescriptor);
 		dprintf("\tflags........... 0x%08" B_PRIx32 "\n", topDescriptor->flags);
 		dprintf("\tbuffer_pagebyte0 0x%08" B_PRIx32 "\n", topDescriptor->buffer_page_byte_0);
 		dprintf("\tnext_physical... 0x%08" B_PRIx32 "\n", topDescriptor->next_physical_descriptor);
