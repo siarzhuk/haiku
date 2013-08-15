@@ -1,10 +1,10 @@
 #ifndef USB_AUDIO_H
 #define USB_AUDIO_H
 
-// (Partial) USB Class Definitions for Audio Devices, version 1.0
-// Reference: http://www.usb.org/developers/devclass_docs/audio10.pdf
+// (Partial) USB Device Class Definition for Audio Devices
+// R1: Release 1.0 March 18, 1998
+// R2: Release 2.0 May 31, 2006
 
-//#include <BeBuild.h>	// for _PACKED definition
 #include <SupportDefs.h>
 
 #define USB_AUDIO_DEVICE_CLASS 			0x01
