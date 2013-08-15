@@ -1226,7 +1226,7 @@ OHCI::_FinishIsochronousTransfer(transfer_data *transfer,
 		while (descriptor) {
 			uint32 status = OHCI_TD_GET_CONDITION_CODE(descriptor->flags);
 			if (status != OHCI_TD_CONDITION_NO_ERROR) {
-				TRACE_ERROR("ITD error: 0x%08lx\n", status);
+				TRACE_ERROR("ITD error: 0x%08" B_PRIx32 "\n", status);
 				// spec says that in most cases condition code
 				// of retired ITDs is set to NoError, but for the
 				// time overrun it can be DataOverrun. We assume
@@ -1297,7 +1297,7 @@ OHCI::_FinishIsochronousTransfer(transfer_data *transfer,
 
 	// break the descriptor chain on the last descriptor
 	transfer->last_descriptor->next_logical_descriptor = NULL;
-	TRACE("iso.transfer %p done with status 0x%08lx len:%ld\n",
+	TRACE("iso.transfer %p done with status 0x%08" B_PRIx32 " len:%ld\n",
 		transfer, callbackStatus, actualLength);
 
 	// if canceled the callback has already been called
@@ -1479,10 +1479,8 @@ OHCI::_SubmitIsochronousTransfer(Transfer *transfer)
 	status_t result = _CreateIsochronousDescriptorChain(&firstDescriptor,
 		&lastDescriptor, transfer);
 
-	if (firstDescriptor == 0 || lastDescriptor == 0) {
-		TRACE("%p -> %p\n", firstDescriptor, lastDescriptor);
+	if (firstDescriptor == 0 || lastDescriptor == 0)
 		return B_ERROR;
-	}
 
 	if (result < B_OK)
 		return result;
@@ -1511,7 +1509,8 @@ OHCI::_SubmitIsochronousTransfer(Transfer *transfer)
 	result = _AddPendingIsochronousTransfer(transfer, endpoint,
 		firstDescriptor, lastDescriptor, directionIn);
 	if (result < B_OK) {
-		TRACE_ERROR("failed to add pending isochronous transfer\n");
+		TRACE_ERROR("failed to add pending iso.transfer:"
+			"0x%08" B_PRIx32 "\n", result);
 		_FreeIsochronousDescriptorChain(firstDescriptor);
 		return result;
 	}
@@ -2030,8 +2029,8 @@ OHCI::_CreateIsochronousDescriptorChain(ohci_isochronous_td **_firstDescriptor,
 		packetSize++;
 
 	if (packetSize > pipe->MaxPacketSize()) {
-		TRACE_ERROR("isochronous packetSize is bigger"
-					" than pipe MaxPacketSize.");
+		TRACE_ERROR("isochronous packetSize %ld is bigger"
+			" than pipe MaxPacketSize %ld.", packetSize, pipe->MaxPacketSize());
 		return B_BAD_VALUE;
 	}
 
@@ -2044,7 +2043,6 @@ OHCI::_CreateIsochronousDescriptorChain(ohci_isochronous_td **_firstDescriptor,
 
 	// the frame number currently processed by the host controller
 	uint16 currentFrame = fHcca->current_frame_number & 0xFFFF;
-	TRACE("Current Frame Number:%" B_PRIx32 "\n", fHcca->current_frame_number);
 	uint16 safeFrames = 5;
 
 	// The entry where to start inserting the first Isochronous descriptor
@@ -2122,12 +2120,6 @@ OHCI::_CreateIsochronousDescriptorChain(ohci_isochronous_td **_firstDescriptor,
 
 	*_firstDescriptor = firstDescriptor;
 	*_lastDescriptor = lastDescriptor;
-
-	TRACE("isochronous chain size=%ld bytes, packets=%ld, "
-		"packetSize=%ld starting frame:%d\n", transfer->DataLength(),
-		isochronousData->packet_count, packetSize, currentFrame);
-
-	TRACE("Current Frame Number:%" B_PRIx32 "\n", fHcca->current_frame_number);
 
 	return B_OK;
 }
